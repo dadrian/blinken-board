@@ -50,6 +50,26 @@ def parse_pkt(board, psu_id, pkt):
 f = open(sys.argv[1], 'r')
 pcap = dpkt.pcap.Reader(f)
 
+initial_ts = None
+initial_rt = None
+def wait_for(ts):
+    global initial_ts
+    global initial_rt
+
+    if initial_ts is None:
+        initial_ts = ts
+        initial_rt = time.time()
+        return
+
+    offset = (ts - initial_ts)
+    sleep_time = (offset + initial_rt) - time.time()
+    if sleep_time < 0.01:
+        return
+
+    time.sleep(sleep_time)
+
+
+
 for ts, buf in pcap:
 
     eth = dpkt.ethernet.Ethernet(buf)
@@ -58,7 +78,9 @@ for ts, buf in pcap:
         if ip.p == dpkt.ip.IP_PROTO_UDP:
             udp = ip.data
             if ip.src == socket.inet_aton("10.1.3.100") and udp.dport == 6038:
+                wait_for(ts)
                 parse_pkt(board, 0, udp.data)
+
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
