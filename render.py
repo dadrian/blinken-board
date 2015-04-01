@@ -8,16 +8,8 @@ import dpkt
 import socket
 import struct
 
-class Board(object):
-    def __init__(self, size=(700, 500)):
-        self.screen = pygame.display.set_mode(size)
-        self.screen.fill((0, 0, 0))
-
-    def set_light(self, x, y, color):
-        pygame.draw.circle(self.screen, color, (x*10+20, y*10+20), 4)
-
-    def display(self):
-        pygame.display.flip()
+import psu
+from board import Board
 
 
 pygame.init()
@@ -25,10 +17,11 @@ board = Board()
 
 
 
-for x in xrange(64):
+
+# actually only 44x57, but the diagonal makes it 45x57, where the diagonal is always off
+for x in xrange(57):
     for y in xrange(45):
         board.set_light(x, y, (0, 0, 255))
-
 
     board.display()
 
@@ -39,9 +32,30 @@ def parse_pkt(board, psu_id, pkt):
 
     for bulb_id in xrange(0, bulbs_len/3):
         r, g, b, = struct.unpack('>BBB', pkt[24+bulb_id*3:27+bulb_id*3])
-        x = (psu_id * 8 + 8) - (strand_id)
         y = bulb_id
-        board.set_light(x, y, (r, g, b))
+        x = (psu_id*7 + 8) - (strand_id)
+
+        # Might seem weird, but basically the left-most PSU (id=0)
+        # has 8 strands, but all the others have 7
+        # (for a total of 57)
+        # 
+        #0, 8 => 0
+        #...
+        # , 1 => 7
+        #1, 7 => 8
+        # , 6 => 9
+        # , 5 => 10
+        # , 4 => 11
+        # , 3 => 12
+        # , 2 => 13
+        # , 1 => 14
+        #2, 7 => 15
+
+        try:
+            board.set_light(x, y, (r, g, b))
+        except Exception:
+            print 'Error: %d %d %d => %d, %d' % (psu_id, bulb_id, strand_id, x, y)
+            sys.exit(1)
 
 
     board.display()
@@ -70,8 +84,7 @@ def wait_for(ts):
     time.sleep(sleep_time)
 
 #dest_psu_ips = ['10.4.57.127', '10.4.57.131', '10.4.57.134', '10.4.57.120', '10.4.57.133', '10.4.132.113', '10.4.163.250', '10.4.135.141']
-dest_psu_ips = ['10.4.135.141', '10.4.163.250', '10.4.132.113', '10.4.57.133', '10.4.57.120', '10.4.57.134', '10.4.57.131', '10.4.57.127']
-dest_psu_addrs = [socket.inet_aton(x) for x in dest_psu_ips]
+dest_psu_addrs = [socket.inet_aton(x) for x in psu.dest_ips]
 
 
 for ts, buf in pcap:
@@ -91,3 +104,15 @@ for ts, buf in pcap:
             pygame.quit();
             sys.exit();
     #time.sleep(.05)
+
+
+
+while 1:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit();
+            sys.exit();
+    time.sleep(0.01)
+
+
+
