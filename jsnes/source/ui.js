@@ -165,7 +165,7 @@ if (typeof jQuery !== 'undefined') {
                 }
 
                 self.canvasImageData = self.canvasContext.getImageData(0, 0, 256, 240);
-                self.downsampleImageData = self.downsampleContext.getImageData(0, 0, 51, 48)
+                self.downsampleImageData = self.downsampleContext.getImageData(0, 2, 51, 46)
                 self.resetCanvas();
 
                 /*
