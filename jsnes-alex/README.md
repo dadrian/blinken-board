@@ -1,4 +1,4 @@
-JSNES
+JSNES+websocket
 =====
 
 Edit source/socket-launcher.js with the URL of your websocket server.
