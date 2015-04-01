@@ -1,25 +1,13 @@
 JSNES
 =====
 
-A JavaScript NES emulator.
+Edit source/socket-launcher.js with the URL of your websocket server.
 
-Build
------
+Run some local websocket server:
 
-To build a distribution, you will [Grunt](http://gruntjs.com):
+    $ python socket-server.py
+    $ python -m SimpleHTTPServer 8000
 
-    $ sudo npm install -g grunt-cli
+Visit http://localhost:8000.
 
-Then run:
-
-    $ npm install
-    $ grunt
-
-This will create ``jsnes.js`` and ``jsnes-min.js`` in ``build/``.
-
-Benchmark
----------
-
-The benchmark in ``test/benchmark.js`` is intended for testing JavaScript 
-engines. It does not depend on a DOM or Canvas element etc.
-
+Your websocket server will receive a png of each frame.
