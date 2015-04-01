@@ -1,35 +1,19 @@
-console.log('pwnage');
-
 var wsUri = 'ws://localhost:9000/';
 
 window.addEventListener("load", function() {
 
-    var status = document.getElementById('socketStatus'); 
-    function output(m) { status.innerHTML = m; }
+    // kindle a websocket
+    var websocket = new WebSocket(wsUri);
+    function status(m) { document.getElementById('socketStatus').innerHTML = m; }
+    websocket.onopen  = function(e) { status('CONNECTED'); };
+    websocket.onclose = function(e) { status('DISCONNECTED'); };
+    websocket.onerror = function(e) { status('ERROR: '+e.data); };
 
-    // init websocket
-    var websocket = new WebSocket(wsUri);    
-    websocket.binaryType = "arraybuffer";
-    websocket.onopen  = function(e) { output('CONNECTED'); };
-    websocket.onclose = function(e) { output('DISCONNECTED'); };
-    websocket.onerror = function(e) { output('ERROR: ' + e.data); };
-
-    // hook frame function
+    // on every frame, send a png of the canvas over the socket
     var origFrame = JSNES.prototype.frame;
     JSNES.prototype.frame = function() {
-        onFrame();
+        websocket.send(document.querySelector('.nes-screen').toDataURL("image/png"));
         origFrame.apply(this);
-    }
-
-    var canvas = document.querySelector('.nes-screen');
-    var context = canvas.getContext('2d');
-    var width = canvas.clientWidth;
-    var height = canvas.clientHeight;
-
-    function onFrame() {
-        var pixels = context.getImageData(0, 0, width, height);
-        var pngdata = canvas.toDataURL("image/png");
-        websocket.send(pngdata);
     }
 
 }, false);
