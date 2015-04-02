@@ -36,7 +36,8 @@ class EchoWebSocket(WebSocket):
         img_data = message.data.split(',')[1].decode('base64')
         img = Image.open(StringIO.StringIO(img_data))
         #img.thumbnail((57, 45), Image.ANTIALIAS)
-        px = img.resize((57, 45), Image.ANTIALIAS).load()
+        bsize = 8
+        px = img.crop((bsize, bsize, 256-bsize, 240-bsize)).resize((57, 45), Image.ANTIALIAS).load()
         for x in xrange(57):
             for y in xrange(45):
                 try:
