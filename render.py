@@ -15,9 +15,6 @@ from board import Board
 pygame.init()
 board = Board()
 
-
-
-
 # actually only 44x57, but the diagonal makes it 45x57, where the diagonal is always off
 for x in xrange(57):
     for y in xrange(45):
@@ -38,7 +35,7 @@ def parse_pkt(board, psu_id, pkt):
         # Might seem weird, but basically the left-most PSU (id=0)
         # has 8 strands, but all the others have 7
         # (for a total of 57)
-        # 
+        #
         #0, 8 => 0
         #...
         # , 1 => 7
@@ -94,7 +91,8 @@ for ts, buf in pcap:
         ip = eth.data
         if ip.p == dpkt.ip.IP_PROTO_UDP:
             udp = ip.data
-            if ip.src == socket.inet_aton("10.1.3.100") and udp.dport == 6038:
+            #if ip.src == socket.inet_aton("10.1.3.100") and udp.dport == 6038:
+            if udp.dport == 6038:
                 wait_for(ts)
                 parse_pkt(board, dest_psu_addrs.index(ip.dst), udp.data)
 
