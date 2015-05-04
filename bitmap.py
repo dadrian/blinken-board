@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from PIL import Image
+from PIL import ImageFilter
 from board import Board
 import colorsys
 import sys
@@ -20,8 +21,11 @@ board = Board()
 
 degree = 0
 while True:
+    px = im.resize((57, 45), Image.ANTIALIAS).filter(ImageFilter.Kernel((3,3), (0, -1, 0, -1, 5, -1, 0, -1, 0))).load()
+    if (degree % 90 == 0):
+        degree += 0.1
     px = im.rotate(degree).load()
-    degree += 1
+    degree += 15
     for x in xrange(57):
         for y in xrange(45):
             try:
