@@ -76,7 +76,7 @@ while True:
 
     board.display()
     board.send_board()
-    degree += 0.25
+    degree += 5
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit();
