@@ -27,7 +27,7 @@ qr.make(fit=True)
 matrix = qr.get_matrix()
 size = len(matrix)
 x_offset = (57 - size) / 2
-y_offset = (45 - size) / 2
+y_offset = (44 - size) / 2
 
 
 
@@ -37,7 +37,7 @@ random.shuffle(indexes)
 
 
 for x in xrange(57):
-    for y in xrange(45):
+    for y in xrange(44):
         board.set_light(x, y, (255, 255, 0))
 
 board.display()
@@ -62,12 +62,12 @@ while True:
 
     r, g, b = colorsys.hsv_to_rgb((degree+60)/360.0, 1, 1)
     for x in xrange(57):
-        for y in xrange(45):
+        for y in xrange(44):
             board.set_light(x, y, (int(r*255), int(g*255), int(b*255)))
 
     r, g, b = colorsys.hsv_to_rgb((degree+240)/360.0, 1, 1)
     for x in xrange(57):
-        for y in xrange(45):
+        for y in xrange(44):
             try:
                 if matrix[x][y]:
                     board.set_light(x+x_offset, y+y_offset, (int(r*255), int(g*255), int(b*255)))
