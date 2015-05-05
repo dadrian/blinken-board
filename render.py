@@ -13,7 +13,7 @@ from board import Board
 
 
 pygame.init()
-board = Board()
+board = Board(height=45) # we will show the diagonal
 
 # actually only 44x57, but the diagonal makes it 45x57, where the diagonal is always off
 for x in xrange(57):
@@ -58,10 +58,6 @@ def parse_pkt(board, psu_id, pkt):
     board.display()
 
 
-
-f = open(sys.argv[1], 'r')
-pcap = dpkt.pcap.Reader(f)
-
 initial_ts = None
 initial_rt = None
 def wait_for(ts):
@@ -84,8 +80,9 @@ def wait_for(ts):
 dest_psu_addrs = [socket.inet_aton(x) for x in psu.dest_ips]
 
 
-for ts, buf in pcap:
 
+
+def handle_pkt(ts, buf):
     eth = dpkt.ethernet.Ethernet(buf)
     if eth.type == dpkt.ethernet.ETH_TYPE_IP:
         ip = eth.data
@@ -93,7 +90,8 @@ for ts, buf in pcap:
             udp = ip.data
             #if ip.src == socket.inet_aton("10.1.3.100") and udp.dport == 6038:
             if udp.dport == 6038:
-                wait_for(ts)
+                if ts is not None:
+                    wait_for(ts)
                 parse_pkt(board, dest_psu_addrs.index(ip.dst), udp.data)
 
 
@@ -105,12 +103,26 @@ for ts, buf in pcap:
 
 
 
-while 1:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit();
-            sys.exit();
-    time.sleep(0.01)
+if len(sys.argv) > 1:
+    f = open(sys.argv[1], 'r')
+    pcap = dpkt.pcap.Reader(f)
+
+    for ts, buf in pcap:
+        handle_pkt(ts, buf)
+
+    while 1:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit();
+                sys.exit();
+        time.sleep(0.01)
+
+else:
+    # read from iface
+    s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, 0x0300)
+    while True:
+        buf = s.recv(0xffff)
+        handle_pkt(None, buf)
 
 
 
