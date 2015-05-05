@@ -4,6 +4,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <event2/event.h>
+#include <event2/bufferevent.h>
+#include <event2/listener.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -18,17 +20,17 @@ char *ip_addrs[] = {"10.4.135.141", "10.4.163.250", "10.4.132.113",
                     "10.4.57.133", "10.4.57.120", "10.4.57.134",
                     "10.4.57.131", "10.4.57.127"};
 
-int psu_lengths = [8, 7, 7, 7, 7, 7, 7, 7];
+int psu_lengths[] = {8, 7, 7, 7, 7, 7, 7, 7};
 
-int diag_gap = [\
-45, 45, 45, 44, 44, 43, 42, 41, \
-41, 40, 39, 38, 38, 37, 36, \
-35, 34, 33, 33, 32, 31, 30, \   // TODO: check these values <--
-30, 29, 28, 27, 26, 26, 25, \
-24, 23, 22, 22, 21, 20, 19, \
-19, 18, 17, 16, 15, 14, 14, \
-13, 12, 11, 10, 10,  9,  8, \
-7.   6,  5,  5,  4,  3,  2];
+int diag_gap[] = {
+45, 45, 45, 44, 44, 43, 42, 41,
+41, 40, 39, 38, 38, 37, 36,
+35, 34, 33, 33, 32, 31, 30,   // TODO: check these values <--
+30, 29, 28, 27, 26, 26, 25,
+24, 23, 22, 22, 21, 20, 19,
+19, 18, 17, 16, 15, 14, 14,
+13, 12, 11, 10, 10,  9,  8,
+ 7,  6,  5,  5,  4,  3,  2};
 
 uint8_t psu_hdr_data[] = {0x04, 0x01, 0xdc, 0x4a, 0x01, 0x00, 0x08, 0x01, 0x00};
 
@@ -74,7 +76,7 @@ struct state_st
 
     // Stats
     uint32_t            frame_updates;
-}
+};
 
 void init_psus(struct state_st *st)
 {
@@ -82,16 +84,17 @@ void init_psus(struct state_st *st)
     int port = PSU_DEST_PORT;
     for (i=0; i<NUM_PSUS; i++) {
         st->psu_sin[i].sin_family = AF_INET;
-        st->psu_sin[i].sin_port = htons(port)
+        st->psu_sin[i].sin_port = htons(port);
         inet_aton(ip_addrs[i], &st->psu_sin[i].sin_addr);
     }
 }
 
-void update_strand(char *buf)
+void update_strands(struct state_st *state, char *buf)
 {
     int i;  // psu_id
     struct rgb *p = (struct rgb *)buf;
     int strand_idx = 0;
+    int j;
 
     for (i=0; i<NUM_PSUS; i++) {
         // Each PSU has {8,7} strands:
@@ -114,7 +117,7 @@ void update_strand(char *buf)
                 p += gap;
 
                 // Gap
-                memset(pkt.bulbs[gap], 0, sizeof(struct rgb));
+                memset(&pkt.bulbs[gap], 0, sizeof(struct rgb));
 
                 // Bulbs after gap
                 memcpy(&pkt.bulbs[gap+1], p, (BOARD_HEIGHT - gap)*sizeof(struct rgb));
@@ -127,9 +130,9 @@ void update_strand(char *buf)
                 p += BOARD_HEIGHT;
             }
 
-            memcpy(pkt.flags, psu_hdr_flags[i], sizeof(struct psu_flags));
+            memcpy(&pkt.flags, &psu_hdr_flags[i], sizeof(struct psu_flags));
 
-            sendto(state->udp_sock, pkt, pkt_len, 0,
+            sendto(state->udp_sock, &pkt, pkt_len, 0,
                    (struct sockaddr*)&state->psu_sin[i], sizeof(struct sockaddr_in));
 
         }
@@ -146,7 +149,7 @@ void read_cb(struct bufferevent *bev, void *arg)
     // TODO: use math and evbuffer_drain to save on copying
     while (evbuffer_get_length(input) >= sizeof(buf)) {
         evbuffer_remove(input, buf, sizeof(buf));
-        update_strands(buf);
+        update_strands(state, buf);
 
         state->frame_updates++;
         had_input = 1;
@@ -157,13 +160,13 @@ void read_cb(struct bufferevent *bev, void *arg)
 void status_cb(evutil_socket_t fd, short what, void *arg)
 {
     struct state_st *state = arg;
-    printf("%d frames/sec", state->frame_updates);
+    printf("%d frames/sec\n", state->frame_updates);
 
     state->frame_updates = 0;
 }
 
 
-accept_conn_cb(struct evconnlistener *listener,
+void accept_conn_cb(struct evconnlistener *listener,
     evutil_socket_t fd, struct sockaddr *address, int socklen,
     void *arg)
 {
@@ -187,6 +190,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in sin;
     struct state_st state;
     struct evconnlistener *listener;
+    struct event *ev;
 
     memset(&sin, 0, sizeof(sin));
 
@@ -197,11 +201,12 @@ int main(int argc, char *argv[])
     sin.sin_family = AF_INET;
     sin.sin_port = htons(port);
 
-    state->udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (state->udp_sock < 0) {
+    state.udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (state.udp_sock < 0) {
         perror("socket");
         return -1;
     }
+
 
     listener = evconnlistener_new_bind(base, accept_conn_cb, &state,
             LEV_OPT_CLOSE_ON_FREE|LEV_OPT_REUSEABLE, -1,
