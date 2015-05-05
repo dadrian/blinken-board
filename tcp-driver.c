@@ -76,6 +76,7 @@ struct state_st
 
     // Stats
     uint32_t            frame_updates;
+
 };
 
 void init_psus(struct state_st *st)
@@ -103,14 +104,14 @@ void update_strands(struct state_st *state, char *buf)
             struct psu_pkt pkt;
             size_t pkt_len = sizeof(pkt);
             int bulb_len = 44;
-            int gap = (diag_gap[strand_idx] - 1);
+            int gap = (diag_gap[strand_idx++] - 1);
             memcpy(pkt.head, psu_hdr_data, 9);
             pkt.zeros = 0;
             pkt.strand_id = ntohl(psu_lengths[i] - j);
 
             if (gap < BOARD_HEIGHT) {
                 // Account for inserted element
-                pkt.bulbs_length = ntohl(BOARD_HEIGHT + 1);
+                pkt.bulbs_length = ntohl(sizeof(struct rgb)*(BOARD_HEIGHT + 1));
 
                 // Copy bulbs before gap
                 memcpy(pkt.bulbs, p, gap*sizeof(struct rgb));
@@ -123,7 +124,7 @@ void update_strands(struct state_st *state, char *buf)
                 memcpy(&pkt.bulbs[gap+1], p, (BOARD_HEIGHT - gap)*sizeof(struct rgb));
                 p += (BOARD_HEIGHT - gap);
             } else {
-                pkt.bulbs_length = ntohl(BOARD_HEIGHT);
+                pkt.bulbs_length = ntohl(sizeof(struct rgb)*BOARD_HEIGHT);
                 pkt_len -= sizeof(struct rgb);
 
                 memcpy(pkt.bulbs, p, BOARD_HEIGHT*sizeof(struct rgb));
