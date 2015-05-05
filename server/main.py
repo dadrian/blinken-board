@@ -2,24 +2,63 @@ import asyncio
 import websockets
 import websockets.uri
 import posixpath
+import urllib
+import re
+
+def path_to_list(path):
+    base = posixpath.basename(path)
+    tree = posixpath.dirname(path)
+    parts = list()
+    while base:
+        parts.append(base)
+        base = posixpath.basename(tree)
+        tree = posixpath.dirname(tree)
+    return reversed(parts)
+
+class RoutePath(object):
+    
+    def __init__(self, path):
+        self._raw_path = path
+        self._parts = path_to_list(path)
+        regex_str = '\/' + '\/'.join(
+ 	        [RoutePath.regex_for_part(part) for part in self._parts]
+        )
+        self._variables = [part[1:] for part in self._parts if part[0] == ':']
+        self._regex = re.compile(regex_str)
+        
+    def matches(self, candidate_path):
+        m = self._regex.fullmatch(candidate_path)
+        if m:
+            context = dict()
+            context['__raw_path'] = candidate_path
+            for idx, name in enumerate(self._variables):
+                context[name] = m.group(idx)
+            return context
+        return None
+    
+    @classmethod
+    def regex_for_part(cls, part):
+        if len(part) == 0:
+            raise Exception
+        if part[0] == ':':
+            return '(.+)'
+        return part
+                               
 
 class WebsocketRoute(object):
 
     def __init__(self, path):
-        self._path = path
-
-    def matches(self, request_path):
-        if posixpath.dirname(request_path) != posixpath.dirname(self._path):
-            return False
-        if posixpath.basename(request_path) != posixpath.basename(self._path):
-            return False
-        return True
+        self._path = RoutePath(path)
+    
+    def matches(self, candidate):
+        return self._path.matches(candidate)
 
     def __call__(self, f):
         def wrapped_f(websocket):
             print("calling function for path {}".format(self._path))
             f(websocket)
         return wrapped_f
+
 
 class WebsocketServer(object):
 
@@ -36,8 +75,10 @@ class WebsocketServer(object):
         @asyncio.coroutine
         def do_routing(websocket, path):
             for handler in self._routes:
-                print("incoming path {}".format(path))
-                if handler.matches(path):
+                print("incoming url {}".format(path))
+                url_parts = urllib.parse.urlparse(path)
+                print("incoming path {}", url_parts.path)              
+                if handler.matches(url_parts.path):
                     handler(websocket)
                     print("success")
                     return

@@ -3,7 +3,7 @@ import websockets
 
 @asyncio.coroutine
 def hello():
-    websocket = yield from websockets.connect('ws://localhost:8765/testpath')
+    websocket = yield from websockets.connect('ws://localhost:8765/testpath?herp')
     name = input("What's your name? ")
     yield from websocket.send(name)
     print("> {}".format(name))
