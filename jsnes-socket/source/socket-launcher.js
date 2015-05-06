@@ -1,4 +1,4 @@
-var wsUri = 'ws://localhost:9000/';
+var wsUri = 'ws://localhost:8765/png';
 
 window.addEventListener("load", function() {
 

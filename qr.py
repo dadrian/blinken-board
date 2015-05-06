@@ -14,7 +14,7 @@ import time
 import random
 
 pygame.init()
-board = Board()
+board = Board(host=('141.212.111.193',1337))
 
 qr = qrcode.QRCode(
     version=6,
@@ -43,18 +43,23 @@ for x in xrange(57):
 board.display()
 board.send_board()
 
+
+idx = 0
 for x, y in indexes:
 
     board.set_light(x+x_offset, y+y_offset, (0, 0, 255))
 
-    board.display()
-    board.send_board()
+
+    idx += 1
+    if idx % 10 == 0:
+        board.display()
+        board.send_board()
+        time.sleep(0.025)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit();
             sys.exit();
-    time.sleep(0.025)
 
 
 degree = 0
@@ -81,6 +86,6 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit();
             sys.exit();
-    time.sleep(0.025)
+    time.sleep(0.015)
 
 
