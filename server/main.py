@@ -54,9 +54,13 @@ class WebsocketRoute(object):
         return self._path.matches(candidate)
 
     def __call__(self, f):
+        print("inside of call")
+  
+        @asyncio.coroutine
         def wrapped_f(websocket):
-            print("calling function for path {}".format(self._path))
-            f(websocket)
+            print('calling function for route {}'.format(self._path._raw_path))
+            yield from f(websocket)
+        self._callback = wrapped_f
         return wrapped_f
 
 
@@ -68,6 +72,7 @@ class WebsocketServer(object):
     def route(self, path):
         route = WebsocketRoute(path)
         self._routes.append(route)
+        print('inside of route')
         return route
 
     def get_router(self):
@@ -79,21 +84,22 @@ class WebsocketServer(object):
                 url_parts = urllib.parse.urlparse(path)
                 print("incoming path {}", url_parts.path)              
                 if handler.matches(url_parts.path):
-                    handler(websocket)
+                    res = yield from handler._callback(websocket)
                     print("success")
-                    return
+                    return res
             raise NotImplemented
         return do_routing
 
 
 server = WebsocketServer()
 
+
 @server.route('/testpath')
 @asyncio.coroutine
 def hello(websocket):
+    print('hello')
     name = yield from websocket.recv()
     print("< {}".format(name))
-    print(path)
     greeting = "Hello {}!".format(name)
     yield from websocket.send(greeting)
     print("> {}".format(greeting))
