@@ -1,5 +1,8 @@
 
-import pygame
+try:
+    import pygame
+except:
+    pass
 import psu
 import socket
 import struct
@@ -7,13 +10,15 @@ import struct
 
 
 class Board(object):
-    def __init__(self, size=(600,490), host=('127.0.0.1', 1337), width=57, height=44):
-        self.screen = pygame.display.set_mode(size)
-        self.screen.fill((0, 0, 0))
+    def __init__(self, size=(600,490), host=('127.0.0.1', 1337), width=57, height=44, use_pygame=True):
+        self.screen = None
+        if use_pygame:
+            self.screen = pygame.display.set_mode(size)
+            self.screen.fill((0, 0, 0))
         self.lights = []
-        for x in xrange(width):
+        for x in range(width):
             self.lights.append([])
-            for y in xrange(height):
+            for y in range(height):
                 self.lights[x].append((0, 0, 0))
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
         self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -24,22 +29,24 @@ class Board(object):
 
     def set_light(self, x, y, color):
         self.lights[x][y] = color
-        pygame.draw.circle(self.screen, color, (x*10+20, y*10+20), 4)
+        if self.screen is not None:
+            pygame.draw.circle(self.screen, color, (x*10+20, y*10+20), 4)
 
     def display(self):
-        pygame.display.flip()
+        if self.screen is not None:
+            pygame.display.flip()
 
 
     def send_board(self):
-        buf = ''
-        for x in xrange(len(self.lights)):
-            for y in xrange(len(self.lights[x])):
+        buf = b''
+        for x in range(len(self.lights)):
+            for y in range(len(self.lights[x])):
                 r, g, b = self.lights[x][y]
                 buf += struct.pack('>BBB', r, g, b)
         self.tcp_sock.send(buf)
 
     def send_board_udp(self):
-        for x in xrange(len(self.lights)):
+        for x in range(len(self.lights)):
 
             # x = (psu_id*7 + 8) - (strand_id)
 
@@ -53,7 +60,7 @@ class Board(object):
             data = '0401dc4a0100080100'.decode('hex') + '00000000'.decode('hex')
             data += struct.pack('>I', strand_id)
             buf = ''
-            for y in xrange(len(self.lights[x])):
+            for y in range(len(self.lights[x])):
                 r, g, b = self.lights[x][y]
                 buf += struct.pack('>BBB', r, g, b)
 
