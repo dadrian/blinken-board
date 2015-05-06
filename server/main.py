@@ -104,6 +104,49 @@ def hello(websocket):
     yield from websocket.send(greeting)
     print("> {}".format(greeting))
 
+from board import Board
+from PIL import ImageFilter
+from PIL import Image
+import base64
+import io
+
+@server.route('/png')
+@asyncio.coroutine
+def handle_png(websocket):
+
+    board = Board(use_pygame=False)
+    print('pngpng')
+    while True:
+        message = yield from websocket.recv()
+        #print('data: %s' % message)
+
+        img_data = base64.b64decode(message.split(',')[1])
+        img = Image.open(io.StringIO(str(img_data)))
+        #img.thumbnail((57, 45), Image.ANTIALIAS)
+        bsize = 8
+        small_img = img.crop((bsize, bsize, 256-bsize, 240-bsize)).resize((57, 45), Image.ANTIALIAS).filter(ImageFilter.Kernel((3,3), (0, -0.25, 0, -0.25, 2, -0.25, 0, -0.25, 0)))
+
+        px = small_img.load()
+        for x in range(57):
+            for y in range(44):
+                try:
+                    r, g, b, a = px[x,y]
+                    board.set_light(x, y, (r, g, b))
+                except:
+                    pass
+
+        #board.display()
+        board.send_board()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit();
+                sys.exit();
+        #time.sleep(0.025)
+
+
+
+
 
 start_server = websockets.serve(server.get_router(), 'localhost', 8765)
 
