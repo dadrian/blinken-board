@@ -1,0 +1,148 @@
+<html>
+<head>
+<meta name="viewport" content="width=device-width, user-scalable=no" />
+
+<script src="jquery-2.1.4.min.js"></script>
+<script language="JavaScript">
+
+function point_it(event){
+    pos_x = event.offsetX ? (event.offsetX): event.pageX-document.getElementById("pointer_div").offsetLeft;
+    pos_y = event.offsetY ? (event.offsetY): event.pageY-document.getElementById("pointer_div").offsetTop;
+
+    console.log('x: ' + pos_x + ', y: ' + pos_y);
+}
+
+var buttons = [
+{start: [0.7873538970947266, 0.6193172244400663], end: [0.87158203125, 0.8085530430189755], button: 'A', pressed: false},
+{start: [0.65673828125, 0.6221853298154029], end: [0.7421875, 0.8110761872666943], button: 'B', pressed: false},
+{start: [0.48583984375, 0.6651925743985897], end: [0.5700687408447266, 0.7655457984357886], button: 'Start', pressed: false},
+{start: [0.3466796875, 0.6594581556537743], end: [0.439453125, 0.7684121118052675], button: 'Select', pressed: false},
+{start: [0.13305703401565552, 0.37560535178843096], end: [0.20751953125, 0.5017625361742789], button: 'Up', pressed: false},
+{start: [0.20751953125, 0.5017625361742789], end: [0.2600101470947266, 0.6852639360083727], button: 'Right', pressed: false},
+{start: [0.12939453125, 0.690998354753188], end: [0.20751953125, 0.8142874617637909], button: 'Down', pressed: false},
+{start: [0.07690469026565552, 0.5103632682885731], end: [0.12939453125, 0.690998354753188], button: 'Left', pressed: false}];
+
+
+function get_button(pct_x, pct_y)
+{
+    var i;
+    for (i=0; i<buttons.length; i++) {
+        if (pct_x > buttons[i].start[0] && pct_y > buttons[i].start[1] &&
+            pct_x < buttons[i].end[0] && pct_y < buttons[i].end[1]) {
+
+            return i;
+        }
+    }
+    return -1;
+}
+
+
+var touches = [];
+
+var websocket;
+
+function button_released(button) {
+    console.log('off: ' + button.button);
+    websocket.send('-' + button.button);
+}
+
+function button_pressed(button) {
+    console.log('on: ' + button.button);
+    websocket.send('+' + button.button);
+}
+
+
+window.addEventListener('load', function(){
+    var tot_w = $(window).width();
+    var tot_h = tot_w * 2411/5663;  // resolution of the image
+    websocket = new WebSocket('ws://141.212.111.203:8765/controller');
+    function status(m) { document.getElementById('socketStatus').innerHTML = m; }
+    websocket.onopen  = function(e) { status('CONNECTED'); };
+    websocket.onclose = function(e) { status('DISCONNECTED'); };
+    websocket.onerror = function(e) { status('ERROR: '+e.data); };
+
+
+    $('img').bind('contextmenu', function(e) {
+        return false;
+    }); 
+
+    document.body.addEventListener('touchstart', function(e){
+        var i;
+        for (i=0; i<e.changedTouches.length; i++) {
+            pct_x = (e.changedTouches[i].pageX / tot_w);
+            pct_y = (e.changedTouches[i].pageY / tot_h);
+
+            idx = get_button(pct_x, pct_y);
+            if (idx >= 0) {
+                var button = buttons[idx];
+                //console.log('(' + pct_x + ', ' + pct_y + '): ' + button.button);
+                buttons[idx].pressed = true;
+                touches[i] = {button: button};
+                button_pressed(button);
+            }
+        }
+    }, false);
+
+
+    function touchend (e){
+        var i;
+        for (i=0; i<e.changedTouches.length; i++) {
+            pct_x = (e.changedTouches[i].pageX / tot_w);
+            pct_y = (e.changedTouches[i].pageY / tot_h);
+
+            idx = get_button(pct_x, pct_y);
+            if (idx >= 0) {
+                button = buttons[idx];
+                if (button.pressed) {
+                    delete touches[i];
+                    buttons[idx].pressed = false;
+                    button_released(button);
+                }
+            }
+        }
+    }
+
+    document.body.addEventListener('touchend', touchend, false);
+    document.body.addEventListener('touchcancel', touchend, false);
+
+
+    document.body.addEventListener('touchmove', function(e){
+        var i;
+        for (i=0; i<e.changedTouches.length; i++) {
+            pct_x = (e.changedTouches[i].pageX / tot_w);
+            pct_y = (e.changedTouches[i].pageY / tot_h);
+
+            idx = get_button(pct_x, pct_y);
+            if (idx >= 0) {
+                button = buttons[idx];
+                if (touches[i] == undefined) {
+                    touches[i] = {button: button};
+                    buttons[idx].pressed = true;
+                    button_pressed(button);
+                } else if (touches[i].button.button != button.button) {
+                    delete touches[i];
+                    button_released(touches[i].button);
+                }
+                // Still down...
+            } else if (touches[i] != undefined) {
+                button_released(touches[i].button);
+                delete touches[i];
+                // Hmmm. lost a button?
+                //console.log(e);
+            }
+        }
+    }, false);
+}, false)
+
+</script>
+
+
+</head>
+<body>
+
+<img id="img" src="nes-controller.jpg" width="100%"/>
+
+<div id="socketStatus"></div>
+
+</body>
+</html>
