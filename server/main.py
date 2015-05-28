@@ -114,7 +114,8 @@ import io
 @asyncio.coroutine
 def handle_png(websocket):
 
-    board = Board(use_pygame=False, host=('141.212.111.193', 1337))
+    #board = Board(use_pygame=False, host=('141.212.111.193', 1337))
+    board = Board(use_pygame=False, host=('141.212.141.3', 1337))
     print('pngpng')
     while True:
         message = yield from websocket.recv()
@@ -140,11 +141,55 @@ def handle_png(websocket):
 
         #time.sleep(0.025)
 
+import socket
+import struct
+
+button_hid = {'A':      (0x0000000000200000, False), \
+              'B':      (0x0000000000400000, False), \
+              'Start':  (0x0000000000002000, False), \
+              'Select': (0x0000000000001000, False), \
+              'Right':  (0x0000008000000000, False), \
+              'Down':   (0x0000000080000000, False), \
+              'Left':   (0x0000000100000000, True), \
+              'Up':     (0x0000000001000000, True)}
+                # except left and up should clear those bits
+
+def get_hidraw(buttons):
+     # 01 7f 7f 7f 7f 0f 00 00
+    out = 0x017f7f7f7f0f0000
+    for k in buttons.keys():
+        if buttons[k]:
+            mask, rev = button_hid[k]
+            out |= mask
+            if rev:
+                out &= ~mask
+    return out
+
+
+@server.route('/controller')
+@asyncio.coroutine
+def handle_controller(websocket):
+
+    buttons = {'A': False, 'B': False, 'Start': False, 'Select': False, 'Left': False, 'Right': False, 'Up': False, 'Down': False }
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+    sock.connect(('127.0.0.1', 8888))
+
+    while True:
+        message = yield from websocket.recv()
+        print('controller: %s' % message)
+        key = message[1:]
+        if message[0] == '+':
+            buttons[key] = True
+        elif message[0] == '-':
+            buttons[key] = False
+
+        raw = get_hidraw(buttons)
+        print(hex(raw))
+        sock.send(struct.pack('!Q', raw))
 
 
 
-
-start_server = websockets.serve(server.get_router(), 'localhost', 8765)
+start_server = websockets.serve(server.get_router(), '0.0.0.0', 8765)
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
