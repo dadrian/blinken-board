@@ -13,14 +13,33 @@ function point_it(event){
 }
 
 var buttons = [
-{start: [0.7873538970947266, 0.6193172244400663], end: [0.87158203125, 0.8085530430189755], button: 'A', pressed: false},
-{start: [0.65673828125, 0.6221853298154029], end: [0.7421875, 0.8110761872666943], button: 'B', pressed: false},
-{start: [0.48583984375, 0.6651925743985897], end: [0.5700687408447266, 0.7655457984357886], button: 'Start', pressed: false},
-{start: [0.3466796875, 0.6594581556537743], end: [0.439453125, 0.7684121118052675], button: 'Select', pressed: false},
-{start: [0.13305703401565552, 0.37560535178843096], end: [0.20751953125, 0.5017625361742789], button: 'Up', pressed: false},
-{start: [0.20751953125, 0.5017625361742789], end: [0.2600101470947266, 0.6852639360083727], button: 'Right', pressed: false},
-{start: [0.12939453125, 0.690998354753188], end: [0.20751953125, 0.8142874617637909], button: 'Down', pressed: false},
-{start: [0.07690469026565552, 0.5103632682885731], end: [0.12939453125, 0.690998354753188], button: 'Left', pressed: false}];
+{start: [0.77, 0.50], end: [0.92, 0.92], button: 'A', pressed: false},
+{start: [0.62, 0.50], end: [0.765, 0.92], button: 'B', pressed: false},
+{start: [0.475, 0.60], end: [0.58, 0.80], button: 'Start', pressed: false},
+{start: [0.34, 0.60], end: [0.45, 0.80], button: 'Select', pressed: false},
+
+{start: [0.13, 0.30], end: [0.21, 0.51], button: 'Up', pressed: false},
+{start: [0.21, 0.51], end: [0.30, 0.69], button: 'Right', pressed: false},
+{start: [0.13, 0.69], end: [0.21, 0.89], button: 'Down', pressed: false},
+{start: [0.04, 0.51], end: [0.13, 0.69], button: 'Left', pressed: false}];
+
+function show_boundaries()
+{
+    var i;
+    var tot_w = $(window).width();
+    var tot_h = tot_w * 2411/5663;  // resolution of the image
+
+    for (i=0; i<buttons.length; i++) {
+        d = document.createElement('div');
+        d.style.position = "absolute";
+        d.style.left = Math.floor(buttons[i].start[0]*tot_w) + "px";
+        d.style.top = Math.floor(buttons[i].start[1]*tot_h) + "px";
+        d.style.width = Math.floor((buttons[i].end[0]-buttons[i].start[0])*tot_w) + "px";
+        d.style.height = Math.floor((buttons[i].end[1]-buttons[i].start[1])*tot_h) + "px";
+        d.style.background = "rgba(0, 255, 0, 0.5)";
+        document.body.appendChild(d);
+    }
+}
 
 
 function get_button(pct_x, pct_y)
@@ -55,12 +74,14 @@ function button_pressed(button) {
 window.addEventListener('load', function(){
     var tot_w = $(window).width();
     var tot_h = tot_w * 2411/5663;  // resolution of the image
-    websocket = new WebSocket('ws://141.212.111.203:8765/controller');
+    //websocket = new WebSocket('ws://141.212.111.208:8765/controller');
+    websocket = new WebSocket('ws://192.168.1.126:8765/controller');
     function status(m) { document.getElementById('socketStatus').innerHTML = m; }
     websocket.onopen  = function(e) { status('CONNECTED'); };
     websocket.onclose = function(e) { status('DISCONNECTED'); };
     websocket.onerror = function(e) { status('ERROR: '+e.data); };
 
+    show_boundaries();
 
     $('img').bind('contextmenu', function(e) {
         return false;
@@ -71,6 +92,7 @@ window.addEventListener('load', function(){
         for (i=0; i<e.changedTouches.length; i++) {
             pct_x = (e.changedTouches[i].pageX / tot_w);
             pct_y = (e.changedTouches[i].pageY / tot_h);
+            console.log('[' + pct_x + ', ' + pct_y + ']');
 
             idx = get_button(pct_x, pct_y);
             if (idx >= 0) {
