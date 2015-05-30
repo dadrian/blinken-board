@@ -14,7 +14,7 @@ import time
 import random
 
 pygame.init()
-board = Board(host=('141.212.111.193',1337))
+board = Board(host=('141.212.141.3',1337))
 
 qr = qrcode.QRCode(
     version=6,
@@ -65,12 +65,14 @@ for x, y in indexes:
 degree = 0
 while True:
 
-    r, g, b = colorsys.hsv_to_rgb((degree+60)/360.0, 1, 1)
+    #r, g, b = colorsys.hsv_to_rgb((degree+60)/360.0, 1, 1)
+    r, g, b = (.5, .5, .5)
     for x in xrange(57):
         for y in xrange(44):
             board.set_light(x, y, (int(r*255), int(g*255), int(b*255)))
 
-    r, g, b = colorsys.hsv_to_rgb((degree+240)/360.0, 1, 1)
+    #r, g, b = colorsys.hsv_to_rgb((degree+240)/360.0, 1, 1)
+    r, g, b = (0, 0, 0)
     for x in xrange(57):
         for y in xrange(44):
             try:
