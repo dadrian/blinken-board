@@ -81,11 +81,11 @@ window.addEventListener('load', function(){
     websocket.onclose = function(e) { status('DISCONNECTED'); };
     websocket.onerror = function(e) { status('ERROR: '+e.data); };
 
-    show_boundaries();
+    //show_boundaries();
 
     $('img').bind('contextmenu', function(e) {
         return false;
-    }); 
+    });
 
     document.body.addEventListener('touchstart', function(e){
         var i;
