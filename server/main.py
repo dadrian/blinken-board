@@ -110,8 +110,11 @@ from PIL import Image
 import base64
 import io
 import time
+from menu import NesMenu
 
-active_players = 1
+active_players = 0
+in_menu = True
+menu = NesMenu()
 
 @server.route('/png')
 @asyncio.coroutine
@@ -139,25 +142,31 @@ def handle_png(websocket):
 
         printed_msg += 1
 
-        if True:
+        if not(in_menu):
             img_data = base64.b64decode(message.split(',')[1])
             img = Image.open(io.BytesIO(img_data))
             #img.thumbnail((57, 45), Image.ANTIALIAS)
             bsize = 8
             small_img = img.crop((bsize, bsize, 256-bsize, 240-bsize)).resize((57, 45), Image.ANTIALIAS).filter(ImageFilter.Kernel((3,3), (0, -0.25, 0, -0.25, 2, -0.25, 0, -0.25, 0)))
+        else:
+            img = menu.get_image()
+            small_img = img.resize((57, 45), Image.ANTIALIAS)
 
-            px = small_img.load()
-            for x in range(57):
-                for y in range(44):
-                    try:
-                        r, g, b = px[x,y]
-                        board.set_light(x, y, (r, g, b))
-                    except:
-                        pass
+        px = small_img.load()
+        for x in range(57):
+            for y in range(44):
+                try:
+                    colors = px[x,y]
+                    r = colors[0]
+                    g = colors[1]
+                    b = colors[2]
+                    board.set_light(x, y, (r, g, b))
+                except:
+                    pass
 
-            #board.display()
-            if active_players > 0:
-                board.send_board()
+        #board.display()
+        if active_players > 0:
+            board.send_board()
 
         frames += 1
         tot_frames += 1
@@ -222,6 +231,10 @@ def handle_controller(websocket):
     #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
     #sock.connect(('127.0.0.1', 8888))
 
+    active_players += 1
+    if active_players == 1:
+        in_menu = True
+
     while True:
         message = yield from websocket.recv()
         if message is None:
@@ -229,9 +242,20 @@ def handle_controller(websocket):
             print('controller websocket closed')
             break
 
+        if in_menu:
+            if message == '+Start':
+                # select game
+                hit_start = True
+                in_menu = False
+            else:
+                if message == '+Right':
+                    menu.right()
+                elif message == '+Left':
+                    menu.left()
+
         if not(hit_start) and message == '+Start':
             hit_start = True
-            active_players += 1
+            in_menu = False
 
         print('controller: %s' % message)
         key = message[1:]
