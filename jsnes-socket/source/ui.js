@@ -179,6 +179,7 @@ if (typeof jQuery !== 'undefined') {
             UI.prototype = {    
                 loadROM: function() {
                     var self = this;
+                    console.log('downloading..');
                     self.updateStatus("Downloading...");
                     $.ajax({
                         url: escape(self.romSelect.val()),
