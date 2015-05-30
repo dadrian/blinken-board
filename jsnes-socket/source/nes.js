@@ -22,7 +22,7 @@ var JSNES = function(opts) {
         swfPath: 'lib/',
         
         preferredFrameRate: 60,
-        fpsInterval: 500, // Time between updating FPS in ms
+        fpsInterval: 5000, // Time between updating FPS in ms
         showDisplay: true,
 
         emulateSound: false,
@@ -161,6 +161,7 @@ JSNES.prototype = {
                 this.fpsFrameCount / ((now - this.lastFpsTime) / 1000)
             ).toFixed(2)+' FPS';
         }
+        console.log(s);
         this.ui.updateStatus(s);
         this.fpsFrameCount = 0;
         this.lastFpsTime = now;
