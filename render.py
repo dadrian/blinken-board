@@ -24,7 +24,7 @@ for x in xrange(57):
 
 
 
-def parse_pkt(board, psu_id, pkt):
+def parse_pkt(board, psu_id, pkt, display=True):
     strand_id, bulbs_len, = struct.unpack('>II', pkt[13:21])
 
     for bulb_id in xrange(0, bulbs_len/3):
@@ -55,7 +55,8 @@ def parse_pkt(board, psu_id, pkt):
             sys.exit(1)
 
 
-    board.display()
+    if display:
+        board.display()
 
 
 initial_ts = None
@@ -101,8 +102,18 @@ def handle_pkt(ts, buf):
             sys.exit();
     #time.sleep(.05)
 
+running = True
+def psu_worker(board, psu_idx, sock, lock):
+    while running:
+        data, addr = sock.recvfrom(1024)
+        # take lock?
+        lock.acquire()
+        parse_pkt(board, psu_idx, data, True)
+        # release lock?
+        lock.release()
 
 
+import threading
 if len(sys.argv) > 1:
     f = open(sys.argv[1], 'r')
     pcap = dpkt.pcap.Reader(f)
@@ -110,14 +121,33 @@ if len(sys.argv) > 1:
     for ts, buf in pcap:
         handle_pkt(ts, buf)
 
-    while 1:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit();
-                sys.exit();
-        time.sleep(0.01)
-
 else:
+    # bind to ifaces
+    listeners = []
+    for ip in psu.dest_ips:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+        s.bind((ip, 6038))
+        listeners.append(s)
+
+    threads = []
+    lock = threading.Lock()
+    for psu_idx in xrange(len(listeners)):
+        t = threading.Thread(target=psu_worker, args=(board, psu_idx, listeners[psu_idx], lock,))
+        threads.append(t)
+        t.start()
+
+
+while 1:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit();
+            running = False
+            sys.exit();
+    time.sleep(0.01)
+
+
+
+if False:
     # read from iface
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, 0x0300)
     while True:
