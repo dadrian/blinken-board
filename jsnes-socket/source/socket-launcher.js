@@ -1,5 +1,7 @@
 var wsUri = 'ws://localhost:8765/png';
 
+var KeyMap = {A: 88, B: 90, Select: 17, Start: 13, Up: 38, Down: 40, Left: 37, Right: 39};
+
 window.addEventListener("load", function() {
 
     // kindle a websocket
@@ -9,11 +11,42 @@ window.addEventListener("load", function() {
     websocket.onclose = function(e) { status('DISCONNECTED'); };
     websocket.onerror = function(e) { status('ERROR: '+e.data); };
 
+    var controller_ws = new WebSocket('ws://localhost:8765/getcontrols');
+    controller_ws.onopen  = function(evt) { console.log('controller sock opened'); };
+    controller_ws.onclose = function(evt) { console.log('controller sock closed'); };
+    controller_ws.onerror = function(evt) { console.log('controller sock error'); };
+    controller_ws.onmessage = function(evt) {
+        console.log(evt.data);
+        var op = evt.data[0]
+        key = evt.data.substr(1)
+
+        code = KeyMap[key]
+        if (op == '+') {
+            nes.keyboard.keyDown({keyCode: code});
+        } else if (op == '-') {
+            nes.keyboard.keyUp({keyCode: code});
+        }
+    };
+
     // on every frame, send a png of the canvas over the socket
     var origFrame = JSNES.prototype.frame;
+    var firstFrame;
+    var how_frames = 0;
+    var tot_frames = 0;
+    var discard_frame = 0;
     JSNES.prototype.frame = function() {
-        websocket.send(document.querySelector('.nes-screen').toDataURL("image/png"));
+        discard_frame = 1 - discard_frame;
+        if (discard_frame == 0) {
+            websocket.send(document.querySelector('.nes-screen').toDataURL("image/jpeg", 1.0)); //("image/png");
+            how_frames++;
+            tot_frames++;
+        }
         origFrame.apply(this);
     }
+
+    setInterval(function() {
+        console.log((how_frames/5) + " actual frames/sec, " + tot_frames + " total");
+        how_frames = 0;
+    }, 5000);
 
 }, false);
