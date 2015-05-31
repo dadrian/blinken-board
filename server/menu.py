@@ -1,4 +1,5 @@
 from PIL import Image
+from PIL import ImageDraw
 
 
 
@@ -12,6 +13,8 @@ class NesMenu(object):
 
     def __init__(self):
         self.selected = 0
+        self.fill = 0
+        self.fill_dir = 12
 
     def left(self):
         self.selected -= 1
@@ -32,7 +35,23 @@ class NesMenu(object):
             img = Image.open(self.games[self.selected]['image_fn'])
             self.games[self.selected]['image'] = img.resize((57, 45), Image.ANTIALIAS)
 
-        # TODO: add arrows...
+        img = self.games[self.selected]['image']
 
-        return self.games[self.selected]['image']
+        arrows = Image.new("RGBA", (57, 45))
 
+        # add arrows...
+        a = self.fill
+        self.fill += self.fill_dir
+        if self.fill > 255 or self.fill < 0:
+            self.fill_dir = -self.fill_dir
+            self.fill += self.fill_dir
+
+        draw = ImageDraw.Draw(arrows, mode='RGBA')
+        r, g, b = (255, 255, 0)
+        draw.line((50,22, 55,27), fill=(r, g, b, a), width=3)
+        draw.line((50,32, 55,27), fill=(r, g, b, a), width=3)
+
+        draw.line((7,22, 2,27), fill=(r, g, b, a), width=3)
+        draw.line((7,32, 2,27), fill=(r, g, b, a), width=3)
+
+        return Image.alpha_composite(img, arrows)
