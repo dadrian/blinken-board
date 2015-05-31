@@ -17,14 +17,19 @@ window.addEventListener("load", function() {
     controller_ws.onerror = function(evt) { console.log('controller sock error'); };
     controller_ws.onmessage = function(evt) {
         console.log(evt.data);
+        // e.g. '+Right', '-Right', '+A', '-A', '>local roms/Super Mario.nes'
         var op = evt.data[0]
-        key = evt.data.substr(1)
+        value = evt.data.substr(1)
 
-        code = KeyMap[key]
+        code = KeyMap[value]
         if (op == '+') {
             nes.keyboard.keyDown({keyCode: code});
         } else if (op == '-') {
             nes.keyboard.keyUp({keyCode: code});
+        } else if (op == '>') {
+            // Select game
+            $('select')[0].value = value
+            nes.ui.loadROM();
         }
     };
 

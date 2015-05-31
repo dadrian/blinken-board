@@ -121,6 +121,7 @@ menu = NesMenu()
 def handle_png(websocket):
 
     global active_players
+    global in_menu
 
     #board = Board(use_pygame=False, host=('141.212.111.193', 1337))
     #board = Board(use_pygame=False, host=('141.212.141.3', 1337))
@@ -136,21 +137,15 @@ def handle_png(websocket):
             # closed websocket
             print("Closed png websock")
             break
-        if (printed_msg % 1000) == 0:
-            print(len(message))
-            #print(message)
-
-        printed_msg += 1
 
         if not(in_menu):
             img_data = base64.b64decode(message.split(',')[1])
             img = Image.open(io.BytesIO(img_data))
-            #img.thumbnail((57, 45), Image.ANTIALIAS)
-            bsize = 8
+            bsize = 8   # NES border size
             small_img = img.crop((bsize, bsize, 256-bsize, 240-bsize)).resize((57, 45), Image.ANTIALIAS).filter(ImageFilter.Kernel((3,3), (0, -0.25, 0, -0.25, 2, -0.25, 0, -0.25, 0)))
         else:
-            img = menu.get_image()
-            small_img = img.resize((57, 45), Image.ANTIALIAS)
+            # read image from menu
+            small_img = menu.get_image()
 
         px = small_img.load()
         for x in range(57):
@@ -173,7 +168,7 @@ def handle_png(websocket):
         now = time.time()
         if (now - last_time) > 5:
             fps = float(frames) / (now - last_time)
-            print("%f FPS, %d total" % (fps, tot_frames))
+            print("%f FPS, %d total, %d byte frame, in_menu: %s" % (fps, tot_frames, len(message), in_menu))
             last_time = now
             frames = 0
 
@@ -224,8 +219,7 @@ def handle_controller(websocket):
 
     global controller_websocks
     global active_players
-
-    hit_start = False
+    global in_menu
 
     buttons = {'A': False, 'B': False, 'Start': False, 'Select': False, 'Left': False, 'Right': False, 'Up': False, 'Down': False }
     #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -237,35 +231,38 @@ def handle_controller(websocket):
 
     while True:
         message = yield from websocket.recv()
+
+        # check for disconnected websocket
         if message is None:
             active_players -= 1
             print('controller websocket closed')
             break
 
-        if in_menu:
-            if message == '+Start':
-                # select game
-                hit_start = True
-                in_menu = False
-            else:
-                if message == '+Right':
-                    menu.right()
-                elif message == '+Left':
-                    menu.left()
-
-        if not(hit_start) and message == '+Start':
-            hit_start = True
-            in_menu = False
-
         print('controller: %s' % message)
+
         key = message[1:]
         if message[0] == '+':
             buttons[key] = True
         elif message[0] == '-':
             buttons[key] = False
 
-        for ws in controller_websocks:
-            yield from ws.send(message)
+
+        # if we're in a menu, interact with the menu
+        if in_menu:
+            if message == '+Start':
+                # select game
+                for ws in controller_websocks:
+                    yield from ws.send('>'+menu.current_game())
+                in_menu = False
+            else:
+                if message == '+Right':
+                    menu.right()
+                elif message == '+Left':
+                    menu.left()
+        else:
+            # send key events to the other listeners
+            for ws in controller_websocks:
+                yield from ws.send(message)
 
 
         #raw = get_hidraw(buttons)

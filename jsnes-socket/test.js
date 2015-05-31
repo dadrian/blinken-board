@@ -30,8 +30,7 @@ page.open('http://127.0.0.1:8000/index.html', function (status) {
         // Select game to play...
         page.evaluate(function() {
             console.log('setting game...');
-            $('select')[0].value = 'local-roms/Super Mario Bros. (JU) (PRG0) [!].nes'
-            console.log('ok...');
+            $('select')[0].value = 'local-roms/Mario Bros. (JU) [!].nes';
             nes.ui.loadROM();
         });
 
