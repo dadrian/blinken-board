@@ -111,10 +111,26 @@ import base64
 import io
 import time
 from menu import NesMenu
+from qr import QR
 
 active_players = 0
 in_menu = True
 menu = NesMenu()
+
+def write_img(board, img):
+    px = img.load()
+    for x in range(57):
+        for y in range(44):
+            try:
+                colors = px[x,y]
+                r = colors[0]
+                g = colors[1]
+                b = colors[2]
+                board.set_light(x, y, (r, g, b))
+            except:
+                pass
+
+
 
 @server.route('/png')
 @asyncio.coroutine
@@ -126,6 +142,8 @@ def handle_png(websocket):
     #board = Board(use_pygame=False, host=('141.212.111.193', 1337))
     #board = Board(use_pygame=False, host=('141.212.141.3', 1337))
     board = Board(use_pygame=False)
+    qr = None
+    idle_frame = None
     print('pngpng')
     frames = 0
     tot_frames = 0
@@ -138,26 +156,30 @@ def handle_png(websocket):
             print("Closed png websock")
             break
 
-        if not(in_menu):
-            img_data = base64.b64decode(message.split(',')[1])
-            img = Image.open(io.BytesIO(img_data))
-            bsize = 8   # NES border size
-            small_img = img.crop((bsize, bsize, 256-bsize, 240-bsize)).resize((57, 45), Image.ANTIALIAS).filter(ImageFilter.Kernel((3,3), (0, -0.25, 0, -0.25, 2, -0.25, 0, -0.25, 0)))
+        if active_players > 0:
+            if not(in_menu):
+                img_data = base64.b64decode(message.split(',')[1])
+                img = Image.open(io.BytesIO(img_data))
+                bsize = 8   # NES border size
+                small_img = img.crop((bsize, bsize, 256-bsize, 240-bsize)).resize((57, 45), Image.ANTIALIAS).filter(ImageFilter.Kernel((3,3), (0, -0.25, 0, -0.25, 2, -0.25, 0, -0.25, 0)))
+                write_img(board, small_img)
+            else:
+                # read image from menu
+                small_img = menu.get_image()
+                write_img(board, small_img)
         else:
-            # read image from menu
-            small_img = menu.get_image()
-
-        px = small_img.load()
-        for x in range(57):
-            for y in range(44):
+            # Do QR code things, every so often
+            if int(time.time()) % 100 == 0:
+                print('New QR code animation...')
+                qr = QR(board, 'http://192.168.1.126:8001/controller.html')
+                idle_frame = qr.frames()
+            if idle_frame is not None:
                 try:
-                    colors = px[x,y]
-                    r = colors[0]
-                    g = colors[1]
-                    b = colors[2]
-                    board.set_light(x, y, (r, g, b))
-                except:
-                    pass
+                    idle_frame.__next__()
+                    board.send_board()
+                except StopIteration:
+                    idle_frame = None
+
 
         #board.display()
         if active_players > 0:
