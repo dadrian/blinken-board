@@ -140,8 +140,8 @@ def handle_png(websocket):
     global in_menu
 
     #board = Board(use_pygame=False, host=('141.212.111.193', 1337))
-    #board = Board(use_pygame=False, host=('141.212.141.3', 1337))
-    board = Board(use_pygame=False)
+    board = Board(use_pygame=False, host=('141.212.141.3', 1337))
+    #board = Board(use_pygame=False)
     qr = None
     idle_frame = None
     print('pngpng')
@@ -157,6 +157,7 @@ def handle_png(websocket):
             break
 
         if active_players > 0:
+            idle_frame = None
             if not(in_menu):
                 img_data = base64.b64decode(message.split(',')[1])
                 img = Image.open(io.BytesIO(img_data))
@@ -169,9 +170,9 @@ def handle_png(websocket):
                 write_img(board, small_img)
         else:
             # Do QR code things, every so often
-            if int(time.time()) % 100 == 0:
+            if time.gmtime().tm_sec == 0 and time.gmtime().tm_min % 3 == 0:
                 print('New QR code animation...')
-                qr = QR(board, 'http://192.168.1.126:8001/controller.html')
+                qr = QR(board, 'http://141.212.111.225:8001/c.html')
                 idle_frame = qr.frames()
             if idle_frame is not None:
                 try:
