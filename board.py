@@ -43,7 +43,13 @@ class Board(object):
             for y in range(len(self.lights[x])):
                 r, g, b = self.lights[x][y]
                 buf += struct.pack('>BBB', r, g, b)
-        self.tcp_sock.send(buf)
+        try:
+            self.tcp_sock.send(buf)
+        except:
+            # try reconnect?
+            pass
+
+        self.display()
 
     def send_board_udp(self):
         for x in range(len(self.lights)):
