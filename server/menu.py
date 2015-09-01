@@ -7,6 +7,7 @@ class NesMenu(object):
 
     games = [{'name': 'Super Mario', 'image_fn': 'images/super-mario-bros.png', 'value': 'local-roms/Super Mario Bros. (JU) (PRG0) [!].nes'},
              {'name': 'Tetris', 'image_fn': 'images/tetris.png', 'value': 'local-roms/Tetris (U) [!].nes'},
+             {'name': 'Pacman', 'image_fn': 'images/pacman.png', 'value': 'local-roms/Pac-Man (U) [!].nes'},
              {'name': 'Zelda', 'image_fn': 'images/zelda.png', 'value': 'local-roms/Legend of Zelda, The (U) (PRG1).nes'}]
     #         {'name': 'Mario', 'image_fn': 'mario-bros.png', 'value': 'local-roms/Mario Bros. (JU) [!].nes'},
 
