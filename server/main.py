@@ -191,7 +191,7 @@ def handle_png(websocket):
         now = time.time()
         if (now - last_time) > 5:
             fps = float(frames) / (now - last_time)
-            print("%f FPS, %d total, %d byte frame, in_menu: %s" % (fps, tot_frames, len(message), in_menu))
+            print("%f FPS, %d total, %d byte frame, in_menu: %s, players: %d" % (fps, tot_frames, len(message), in_menu, active_players))
             last_time = now
             frames = 0
 
