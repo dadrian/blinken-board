@@ -22,6 +22,7 @@ class Board(object):
                 self.lights[x].append((0, 0, 0))
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
         self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        self.last_buf = b''
         try:
             self.tcp_sock.connect(host)
         except socket.error:
@@ -36,6 +37,8 @@ class Board(object):
         if self.screen is not None:
             pygame.display.flip()
 
+    def get_last_buf(self):
+        return self.last_buf
 
     def send_board(self):
         buf = b''
@@ -43,7 +46,14 @@ class Board(object):
             for y in range(len(self.lights[x])):
                 r, g, b = self.lights[x][y]
                 buf += struct.pack('>BBB', r, g, b)
-        self.tcp_sock.send(buf)
+        self.last_buf = buf
+        try:
+            self.tcp_sock.send(buf)
+        except:
+            # try reconnect?
+            pass
+
+        self.display()
 
     def send_board_udp(self):
         for x in range(len(self.lights)):
