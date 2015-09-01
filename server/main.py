@@ -116,6 +116,7 @@ from qr import QR
 active_players = 0
 in_menu = True
 menu = NesMenu()
+getscreen_websocks = []
 
 def write_img(board, img):
     px = img.load()
@@ -138,6 +139,7 @@ def handle_png(websocket):
 
     global active_players
     global in_menu
+    global getscreen_websocks
 
     #board = Board(use_pygame=False, host=('141.212.111.193', 1337))
     board = Board(use_pygame=False, host=('141.212.141.4', 1337))
@@ -185,6 +187,11 @@ def handle_png(websocket):
         #board.display()
         if active_players > 0:
             board.send_board()
+            for ws in getscreen_websocks:
+                try:
+                    yield from ws.send(board.get_last_buf())
+                except:
+                    getscreen_websocks.remove(ws)
 
         frames += 1
         tot_frames += 1
@@ -235,6 +242,22 @@ def handle_getcontrols(websocket):
             controller_websocks.remove(websocket)
             print('controller listener websocket closed')
             break
+
+@server.route('/getscreen')
+@asyncio.coroutine
+def handle_getscreen(websocket):
+    # add this caller to the board.send_board queue!
+    # so they can see the glory of the board, too
+    global getscreen_websocks
+    getscreen_websocks.append(websocket)
+    print('Adding getscreen listener')
+    while True:
+        message = yield from websocket.recv()
+        if message is None:
+            getscreen_websocks.remove(websocket)
+            print('Removing getscreen listener')
+            break
+
 
 @server.route('/controller')
 @asyncio.coroutine
