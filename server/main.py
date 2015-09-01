@@ -170,7 +170,7 @@ def handle_png(websocket):
                 write_img(board, small_img)
         else:
             # Do QR code things, every so often
-            if time.gmtime().tm_sec == 0 and time.gmtime().tm_min % 3 == 0 and idle_frame is None:
+            if time.gmtime().tm_sec == 0 and time.gmtime().tm_min % 1 == 0 and idle_frame is None:
                 print('New QR code animation...')
                 qr = QR(board, 'http://141.212.111.203:8001/c.html')
                 idle_frame = qr.frames()
