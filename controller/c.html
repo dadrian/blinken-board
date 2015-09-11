@@ -84,7 +84,22 @@ window.addEventListener('load', function(){
                         };
     websocket.onclose = function(e) { status('DISCONNECTED'); };
     websocket.onerror = function(e) { status('ERROR: ' + e.data); };
-    websocket.onmesage = function(e) { status('data: ' + e.data); };
+    websocket.onmessage = function(e) {
+                            status('data: ' + e.data);
+
+                            var err_str = '';
+                            if (e.data == '!old_token') {
+                                err = 'Your token has expired, rescan a more recent QR code!';
+                            } else if (e.data == '!bad_token') {
+                                err = 'Your token is too invalid.';
+                            } else {
+                                err = e.data;
+                            }
+
+                            document.getElementById('error').style.display = 'block';
+                            document.getElementById('error_str').innerHTML = err;
+                            document.getElementById('img').style.display = 'none';
+                        };
 
     //show_boundaries();
 
@@ -167,6 +182,7 @@ window.addEventListener('load', function(){
 </head>
 <body>
 
+<div id="error" style="display: none;"><h1><div id="error_str"></div></h1></div>
 <img id="img" src="nes-controller.jpg" width="100%"/>
 
 <div id="socketStatus"></div>
