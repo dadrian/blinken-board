@@ -1,6 +1,7 @@
 var wsUri = 'ws://localhost:8765/png';
 
-var KeyMap = {A: 88, B: 90, Select: 17, Start: 13, Up: 38, Down: 40, Left: 37, Right: 39};
+var KeyMap = {A: [88], B: [90], Select: [17], Start: [13], Up: [38], Down: [40], Left: [37], Right: [39],
+            UpLeft: [38, 37], UpRight: [38, 39], DownLeft: [40, 37], DownRight: [39, 40]};
 
 window.addEventListener("load", function() {
 
@@ -21,11 +22,17 @@ window.addEventListener("load", function() {
         var op = evt.data[0]
         value = evt.data.substr(1)
 
-        code = KeyMap[value]
+        //code = KeyMap[value]
         if (op == '+') {
-            nes.keyboard.keyDown({keyCode: code});
+            for (var ii=0; ii<KeyMap[value].length; ii++) {
+                code = KeyMap[value][ii];
+                nes.keyboard.keyDown({keyCode: code});
+            }
         } else if (op == '-') {
-            nes.keyboard.keyUp({keyCode: code});
+            for (var ii=0; ii<KeyMap[value].length; ii++) {
+                code = KeyMap[value][ii];
+                nes.keyboard.keyUp({keyCode: code});
+            }
         } else if (op == '>') {
             // Select game
             $('select')[0].value = value
