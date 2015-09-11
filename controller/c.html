@@ -21,7 +21,14 @@ var buttons = [
 {start: [0.13, 0.30], end: [0.21, 0.51], button: 'Up', pressed: false},
 {start: [0.21, 0.51], end: [0.30, 0.69], button: 'Right', pressed: false},
 {start: [0.13, 0.69], end: [0.21, 0.89], button: 'Down', pressed: false},
-{start: [0.04, 0.51], end: [0.13, 0.69], button: 'Left', pressed: false}];
+{start: [0.04, 0.51], end: [0.13, 0.69], button: 'Left', pressed: false},
+
+{start: [0.04, 0.30], end: [0.13, 0.51], button: 'UpLeft', pressed: false},
+{start: [0.21, 0.30], end: [0.30, 0.51], button: 'UpRight', pressed: false},
+{start: [0.04, 0.51], end: [0.13, 0.89], button: 'DownLeft', pressed: false},
+{start: [0.21, 0.51], end: [0.30, 0.89], button: 'DownRight', pressed: false},
+
+];
 
 function show_boundaries()
 {
@@ -101,7 +108,7 @@ window.addEventListener('load', function(){
                             document.getElementById('img').style.display = 'none';
                         };
 
-    //show_boundaries();
+    show_boundaries();
 
     $('img').bind('contextmenu', function(e) {
         return false;
@@ -162,8 +169,11 @@ window.addEventListener('load', function(){
                     buttons[idx].pressed = true;
                     button_pressed(button);
                 } else if (touches[i].button.button != button.button) {
-                    delete touches[i];
+                    buttons[idx].pressed = true;
+                    button_pressed(button);
                     button_released(touches[i].button);
+                    //delete touches[i];
+                    touches[i].button = button;
                 }
                 // Still down...
             } else if (touches[i] != undefined) {
