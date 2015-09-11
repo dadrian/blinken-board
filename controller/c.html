@@ -77,9 +77,14 @@ window.addEventListener('load', function(){
     websocket = new WebSocket('ws://141.212.111.203:8765/controller');
     //websocket = new WebSocket('ws://192.168.1.126:8765/controller');
     function status(m) { document.getElementById('socketStatus').innerHTML = m; }
-    websocket.onopen  = function(e) { status('CONNECTED'); };
+    websocket.onopen  = function(e) {
+                            status('CONNECTED');
+                            token = document.location.hash.substr(1);
+                            websocket.send(token);
+                        };
     websocket.onclose = function(e) { status('DISCONNECTED'); };
-    websocket.onerror = function(e) { status('ERROR: '+e.data); };
+    websocket.onerror = function(e) { status('ERROR: ' + e.data); };
+    websocket.onmesage = function(e) { status('data: ' + e.data); };
 
     //show_boundaries();
 
