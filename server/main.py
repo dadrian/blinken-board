@@ -304,7 +304,7 @@ def handle_controller(websocket):
         t, = struct.unpack('>L', ts)
 
         age = int(time.time()) - t
-        print('new controller with token %s (%d seconds old)' % (token, age))
+        print('new controller %s with token %s (%d seconds old)' % (str(websocket.remote_address), token, age))
 
         # validate tag
         expected_tag = hmac.new(TOKEN_HMAC_KEY, ts).digest()[0:TOKEN_HMAC_TAG_LEN]
