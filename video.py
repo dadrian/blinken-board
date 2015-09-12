@@ -13,8 +13,8 @@ from board import Board
 import pygame
 
 pygame.init()
-#board = Board(host=('141.212.141.3',1337))
-board = Board()
+board = Board(host=('141.212.141.4',1337))
+#board = Board()
 
 for x in xrange(57):
     for y in xrange(44):

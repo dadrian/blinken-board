@@ -4,6 +4,15 @@ import websockets.uri
 import posixpath
 import urllib
 import re
+import time
+import struct
+import base64
+import hmac
+import codecs
+
+TOKEN_HMAC_KEY = b'fogBI6ymJDbQCf6KVVr5x14r'
+TOKEN_HMAC_TAG_LEN = 5   # bytes
+MAX_TOKEN_AGE = 60*10    # seconds
 
 def path_to_list(path):
     base = posixpath.basename(path)
@@ -142,7 +151,7 @@ def handle_png(websocket):
     global getscreen_websocks
 
     #board = Board(use_pygame=False, host=('141.212.111.193', 1337))
-    board = Board(use_pygame=False, host=('141.212.141.4', 1337))
+    board = Board(use_pygame=True)# host=('127.0.0.1', 1337))
     #board = Board(use_pygame=False)
     qr = None
     idle_frame = None
@@ -172,9 +181,18 @@ def handle_png(websocket):
                 write_img(board, small_img)
         else:
             # Do QR code things, every so often
-            if time.gmtime().tm_sec == 0 and time.gmtime().tm_min % 3 == 0 and idle_frame is None:
+            if time.gmtime().tm_sec == 0 and time.gmtime().tm_min % 1 == 0 and idle_frame is None:
                 print('New QR code animation...')
-                qr = QR(board, 'http://141.212.108.251:8001/c.html')
+
+                tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
+                tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
+                token = base64.urlsafe_b64encode(tb + tag)
+                url = 'http://10.0.0.175:8001/c.html#' + str(token, 'ascii')
+
+                print('url: %s' % (url))
+
+                #'http://141.212.111.203:8001/c.html'
+                qr = QR(board, url)
                 idle_frame = qr.frames()
             if idle_frame is not None:
                 try:
@@ -214,7 +232,7 @@ button_hid = {'A':      (0x0000000000200000, False), \
               'Right':  (0x0000008000000000, False), \
               'Down':   (0x0000000080000000, False), \
               'Left':   (0x0000000100000000, True), \
-              'Up':     (0x0000000001000000, True)}
+              'Up':     (0x0000000001000000, True),}
                 # except left and up should clear those bits
 
 def get_hidraw(buttons):
@@ -268,8 +286,39 @@ def handle_controller(websocket):
     global in_menu
 
     buttons = {'A': False, 'B': False, 'Start': False, 'Select': False, 'Left': False, 'Right': False, 'Up': False, 'Down': False }
-    #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-    #sock.connect(('127.0.0.1', 8888))
+
+    # get token message (first message)
+    token = yield from websocket.recv()
+
+    if token is None:
+        return
+
+    # validate token
+    try:
+        token_raw = base64.urlsafe_b64decode(token)
+        ts = token_raw[0:4]
+        tag = token_raw[4:]
+        t, = struct.unpack('>L', ts)
+
+        age = int(time.time()) - t
+        print('new controller with token %s (%d seconds old)' % (token, age))
+
+        # validate tag
+        expected_tag = hmac.new(TOKEN_HMAC_KEY, ts).digest()[0:TOKEN_HMAC_TAG_LEN]
+        if not(hmac.compare_digest(tag, expected_tag)):
+            print('Incorrect tag %s (expected %s) for time %d' % (tag, expected_tag, t))
+            yield from websocket.send('!bad_token')
+            return
+    except:
+        print('Invalid token %s' % (token))
+        yield from websocket.send('!bad_token')
+        return
+
+    if (age > MAX_TOKEN_AGE):
+        print('token too old')
+        yield from websocket.send('!old_token')
+        return
+
 
     active_players += 1
     if active_players == 1:

@@ -2,6 +2,35 @@
 <head>
 <meta name="viewport" content="width=device-width, user-scalable=no" />
 
+<style>
+
+body, html {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+#error {
+    opacity: 0.7;
+    position: absolute;
+    text-align: center;
+    padding-top: 10%;
+    padding-bottom: 10%;
+    background-color: #f00;
+    display: none;
+    top: 10%;
+    height: 100px;
+    left: 20%;
+    width: 60%;
+    border: 1px solid #000;
+    color: #fff;
+}
+
+#socketStatus {
+    display: none;
+}
+
+</style>
+
 <script src="jquery-2.1.4.min.js"></script>
 <script language="JavaScript">
 
@@ -21,7 +50,14 @@ var buttons = [
 {start: [0.13, 0.30], end: [0.21, 0.51], button: 'Up', pressed: false},
 {start: [0.21, 0.51], end: [0.30, 0.69], button: 'Right', pressed: false},
 {start: [0.13, 0.69], end: [0.21, 0.89], button: 'Down', pressed: false},
-{start: [0.04, 0.51], end: [0.13, 0.69], button: 'Left', pressed: false}];
+{start: [0.04, 0.51], end: [0.13, 0.69], button: 'Left', pressed: false},
+
+{start: [0.04, 0.30], end: [0.17, 0.60], button: 'UpLeft', pressed: false},
+{start: [0.17, 0.30], end: [0.30, 0.60], button: 'UpRight', pressed: false},
+{start: [0.04, 0.60], end: [0.17, 0.89], button: 'DownLeft', pressed: false},
+{start: [0.17, 0.60], end: [0.30, 0.89], button: 'DownRight', pressed: false},
+
+];
 
 function show_boundaries()
 {
@@ -74,12 +110,32 @@ function button_pressed(button) {
 window.addEventListener('load', function(){
     var tot_w = $(window).width();
     var tot_h = tot_w * 2411/5663;  // resolution of the image
-    websocket = new WebSocket('ws://141.212.108.251:8765/controller');
+    websocket = new WebSocket('ws://10.0.0.175:8765/controller');
     //websocket = new WebSocket('ws://192.168.1.126:8765/controller');
     function status(m) { document.getElementById('socketStatus').innerHTML = m; }
-    websocket.onopen  = function(e) { status('CONNECTED'); };
+    websocket.onopen  = function(e) {
+                            status('CONNECTED');
+                            token = document.location.hash.substr(1);
+                            websocket.send(token);
+                        };
     websocket.onclose = function(e) { status('DISCONNECTED'); };
-    websocket.onerror = function(e) { status('ERROR: '+e.data); };
+    websocket.onerror = function(e) { status('ERROR: ' + e.data); };
+    websocket.onmessage = function(e) {
+                            status('data: ' + e.data);
+
+                            var err_str = '';
+                            if (e.data == '!old_token') {
+                                err = 'Your token has expired, rescan a more recent QR code!';
+                            } else if (e.data == '!bad_token') {
+                                err = 'Your token is too invalid.';
+                            } else {
+                                err = e.data;
+                            }
+
+                            document.getElementById('error').style.display = 'block';
+                            document.getElementById('error_str').innerHTML = err;
+                            //document.getElementById('img').style.display = 'none';
+                        };
 
     //show_boundaries();
 
@@ -142,8 +198,11 @@ window.addEventListener('load', function(){
                     buttons[idx].pressed = true;
                     button_pressed(button);
                 } else if (touches[i].button.button != button.button) {
-                    delete touches[i];
+                    buttons[idx].pressed = true;
+                    button_pressed(button);
                     button_released(touches[i].button);
+                    //delete touches[i];
+                    touches[i].button = button;
                 }
                 // Still down...
             } else if (touches[i] != undefined) {
@@ -162,6 +221,7 @@ window.addEventListener('load', function(){
 </head>
 <body>
 
+<div id="error"><h1><div id="error_str"></div></h1></div>
 <img id="img" src="nes-controller.jpg" width="100%"/>
 
 <div id="socketStatus"></div>
