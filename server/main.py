@@ -187,7 +187,7 @@ def handle_png(websocket):
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
                 tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
                 token = base64.urlsafe_b64encode(tb + tag)
-                url = 'http://wallhacks.io/#' + str(token, 'ascii')
+                url = 'http://10.0.0.175:8001/c.html#' + str(token, 'ascii')
 
                 print('url: %s' % (url))
 
@@ -232,7 +232,7 @@ button_hid = {'A':      (0x0000000000200000, False), \
               'Right':  (0x0000008000000000, False), \
               'Down':   (0x0000000080000000, False), \
               'Left':   (0x0000000100000000, True), \
-              'Up':     (0x0000000001000000, True)}
+              'Up':     (0x0000000001000000, True),}
                 # except left and up should clear those bits
 
 def get_hidraw(buttons):
@@ -294,19 +294,23 @@ def handle_controller(websocket):
         return
 
     # validate token
-    token_raw = base64.urlsafe_b64decode(token)
-    ts = token_raw[0:4]
-    tag = token_raw[4:]
-    t, = struct.unpack('>L', ts)
+    try:
+        token_raw = base64.urlsafe_b64decode(token)
+        ts = token_raw[0:4]
+        tag = token_raw[4:]
+        t, = struct.unpack('>L', ts)
 
-    age = int(time.time()) - t
-    print('new controller with token %s (%d seconds old)' % (token, age))
+        age = int(time.time()) - t
+        print('new controller with token %s (%d seconds old)' % (token, age))
 
-    # validate tag
-    expected_tag = hmac.new(TOKEN_HMAC_KEY, ts).digest()[0:TOKEN_HMAC_TAG_LEN]
-    if not(hmac.compare_digest(tag, expected_tag)):
-        #print('Incorrect tag %s (expected %s) for time %d' % (codecs.encode(bytes(tag, 'ascii'), 'hex'), codecs.encode(bytes(expected_tag, 'ascii'), 'hex'), t))
-        print('Incorrect tag %s (expected %s) for time %d' % (tag, expected_tag, t))
+        # validate tag
+        expected_tag = hmac.new(TOKEN_HMAC_KEY, ts).digest()[0:TOKEN_HMAC_TAG_LEN]
+        if not(hmac.compare_digest(tag, expected_tag)):
+            print('Incorrect tag %s (expected %s) for time %d' % (tag, expected_tag, t))
+            yield from websocket.send('!bad_token')
+            return
+    except:
+        print('Invalid token %s' % (token))
         yield from websocket.send('!bad_token')
         return
 
