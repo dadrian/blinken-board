@@ -2,6 +2,35 @@
 <head>
 <meta name="viewport" content="width=device-width, user-scalable=no" />
 
+<style>
+
+body, html {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+#error {
+    opacity: 0.7;
+    position: absolute;
+    text-align: center;
+    padding-top: 10%;
+    padding-bottom: 10%;
+    background-color: #f00;
+    display: none;
+    top: 10%;
+    height: 100px;
+    left: 20%;
+    width: 60%;
+    border: 1px solid #000;
+    color: #fff;
+}
+
+#socketStatus {
+    display: none;
+}
+
+</style>
+
 <script src="jquery-2.1.4.min.js"></script>
 <script language="JavaScript">
 
@@ -81,7 +110,7 @@ function button_pressed(button) {
 window.addEventListener('load', function(){
     var tot_w = $(window).width();
     var tot_h = tot_w * 2411/5663;  // resolution of the image
-    websocket = new WebSocket('ws://127.0.0.1:8765/controller');
+    websocket = new WebSocket('ws://10.0.0.175:8765/controller');
     //websocket = new WebSocket('ws://192.168.1.126:8765/controller');
     function status(m) { document.getElementById('socketStatus').innerHTML = m; }
     websocket.onopen  = function(e) {
@@ -105,10 +134,10 @@ window.addEventListener('load', function(){
 
                             document.getElementById('error').style.display = 'block';
                             document.getElementById('error_str').innerHTML = err;
-                            document.getElementById('img').style.display = 'none';
+                            //document.getElementById('img').style.display = 'none';
                         };
 
-    show_boundaries();
+    //show_boundaries();
 
     $('img').bind('contextmenu', function(e) {
         return false;
@@ -192,7 +221,7 @@ window.addEventListener('load', function(){
 </head>
 <body>
 
-<div id="error" style="display: none;"><h1><div id="error_str"></div></h1></div>
+<div id="error"><h1><div id="error_str"></div></h1></div>
 <img id="img" src="nes-controller.jpg" width="100%"/>
 
 <div id="socketStatus"></div>
