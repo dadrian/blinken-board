@@ -186,7 +186,7 @@ def handle_png(websocket):
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
                 tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
                 token = base64.urlsafe_b64encode(tb + tag)
-                url = 'http://wallhacks.xyz#' + str(token, 'ascii')
+                url = 'http://wallhacks.xyz/#' + str(token, 'ascii')
 
                 print('url: %s' % (url))
 
