@@ -150,8 +150,7 @@ def handle_png(websocket):
     global in_menu
     global getscreen_websocks
 
-    #board = Board(use_pygame=False, host=('141.212.111.193', 1337))
-    board = Board(use_pygame=True)# host=('127.0.0.1', 1337))
+    board = Board(use_pygame=False, host=('141.212.141.4', 1337))
     #board = Board(use_pygame=False)
     qr = None
     idle_frame = None
@@ -187,11 +186,10 @@ def handle_png(websocket):
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
                 tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
                 token = base64.urlsafe_b64encode(tb + tag)
-                url = 'http://10.0.0.175:8001/c.html#' + str(token, 'ascii')
+                url = 'http://wallhacks.xyz#' + str(token, 'ascii')
 
                 print('url: %s' % (url))
 
-                #'http://141.212.111.203:8001/c.html'
                 qr = QR(board, url)
                 idle_frame = qr.frames()
             if idle_frame is not None:
