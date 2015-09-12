@@ -12,7 +12,7 @@ import codecs
 
 TOKEN_HMAC_KEY = b'fogBI6ymJDbQCf6KVVr5x14r'
 TOKEN_HMAC_TAG_LEN = 5   # bytes
-MAX_TOKEN_AGE = 60*10    # seconds
+MAX_TOKEN_AGE = 60*30    # seconds
 
 def path_to_list(path):
     base = posixpath.basename(path)
@@ -180,7 +180,7 @@ def handle_png(websocket):
                 write_img(board, small_img)
         else:
             # Do QR code things, every so often
-            if time.gmtime().tm_sec == 0 and time.gmtime().tm_min % 1 == 0 and idle_frame is None:
+            if time.gmtime().tm_sec == 0 and time.gmtime().tm_min % 5 == 0 and idle_frame is None:
                 print('New QR code animation...')
 
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
@@ -196,6 +196,11 @@ def handle_png(websocket):
                 try:
                     idle_frame.__next__()
                     board.send_board()
+                    for ws in getscreen_websocks:
+                        try:
+                            yield from ws.send(board.get_last_buf())
+                        except:
+                            getscreen_websocks.remove(ws)
                 except StopIteration:
                     idle_frame = None
 
