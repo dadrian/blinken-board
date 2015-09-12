@@ -15,8 +15,8 @@ body, html {
     text-align: center;
     padding-top: 10%;
     padding-bottom: 10%;
-    background-color: #f00;
-    display: none;
+    background-color: #0f0;
+    /*display: none;*/
     top: 10%;
     height: 100px;
     left: 20%;
@@ -114,10 +114,15 @@ window.addEventListener('load', function(){
     function status(m) { document.getElementById('socketStatus').innerHTML = m; }
     websocket.onopen  = function(e) {
                             status('CONNECTED');
+                            document.getElementById('error').style.display = 'none';
                             token = document.location.hash.substr(1);
                             websocket.send(token);
                         };
-    websocket.onclose = function(e) { status('DISCONNECTED'); };
+    websocket.onclose = function(e) {
+                            document.getElementById('error').style.display = 'block';
+                            document.getElementById('error').style.backgroundColor = '#f00';
+                            document.getElementById('error_str').innerHTML = 'Error: disconnected';
+                        };
     websocket.onerror = function(e) { status('ERROR: ' + e.data); };
     websocket.onmessage = function(e) {
                             status('data: ' + e.data);
@@ -132,8 +137,8 @@ window.addEventListener('load', function(){
                             }
 
                             document.getElementById('error').style.display = 'block';
+                            document.getElementById('error').style.backgroundColor = '#f00';
                             document.getElementById('error_str').innerHTML = err;
-                            //document.getElementById('img').style.display = 'none';
                         };
 
     //show_boundaries();
@@ -220,7 +225,7 @@ window.addEventListener('load', function(){
 </head>
 <body>
 
-<div id="error"><h1><div id="error_str"></div></h1></div>
+<div id="error"><h1><div id="error_str">Connecting...</div></h1></div>
 <img id="img" src="nes-controller.jpg" width="100%"/>
 
 <div id="socketStatus"></div>
