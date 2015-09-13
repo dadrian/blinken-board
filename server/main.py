@@ -13,6 +13,7 @@ import codecs
 TOKEN_HMAC_KEY = b'fogBI6ymJDbQCf6KVVr5x14r'
 TOKEN_HMAC_TAG_LEN = 5   # bytes
 MAX_TOKEN_AGE = 60*30    # seconds
+CONTROLLER_WEBSOCKET_TIMEOUT = 60*5 # seconds
 
 def path_to_list(path):
     base = posixpath.basename(path)
@@ -223,6 +224,13 @@ def handle_png(websocket):
             last_time = now
             frames = 0
 
+            # check for timed out users
+            for ws, t in active_controllers.items():
+                if (now - t) > CONTROLLER_WEBSOCKET_TIMEOUT:
+                    print('Timing out controller %s' % (str(ws.remote_address)))
+                    yield from ws.send('!timeout')
+                    del active_controllers[ws]
+
         #time.sleep(0.025)
 
 import socket
@@ -279,12 +287,14 @@ def handle_getscreen(websocket):
             print('Removing getscreen listener')
             break
 
+active_controlers = {}
 
 @server.route('/controller')
 @asyncio.coroutine
 def handle_controller(websocket):
 
-    global controller_websocks
+    global controller_websocks  # for getcontrols, we send controller events to these
+    global active_controllers  # we add to this (len == active_players) and time people out accordingly
     global active_players
     global in_menu
 
@@ -323,6 +333,7 @@ def handle_controller(websocket):
         return
 
 
+    active_controllers[websocket] = time.time()
     active_players += 1
     if active_players == 1:
         in_menu = True
@@ -333,8 +344,11 @@ def handle_controller(websocket):
         # check for disconnected websocket
         if message is None:
             active_players -= 1
-            print('controller websocket closed')
+            print('controller websocket %s closed' % (str(websocket.remote_address)))
+            del active_controllers[websocket]
             break
+
+        active_controllers[websocket] = time.time() # update time
 
         print('controller: %s' % message)
 

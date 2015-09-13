@@ -137,6 +137,8 @@ window.addEventListener('load', function(){
                                 err = 'Your token has expired, rescan a more recent QR code!';
                             } else if (e.data == '!bad_token') {
                                 err = 'Your token is too invalid.';
+                            } else if (e.data == '!timeout') {
+                                err = 'You have timed out. Please refresh or rescan the QR code';
                             } else {
                                 err = e.data;
                             }
