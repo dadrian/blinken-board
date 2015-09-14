@@ -13,7 +13,8 @@ import codecs
 TOKEN_HMAC_KEY = b'fogBI6ymJDbQCf6KVVr5x14r'
 TOKEN_HMAC_TAG_LEN = 5   # bytes
 MAX_TOKEN_AGE = 60*30    # seconds
-CONTROLLER_WEBSOCKET_TIMEOUT = 45 # seconds
+CONTROLLER_WEBSOCKET_TIMEOUT = 15 # seconds
+QR_CODE_PATH = 'http://10.0.0.175:8001/'
 
 def path_to_list(path):
     base = posixpath.basename(path)
@@ -188,7 +189,7 @@ def handle_png(websocket):
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
                 tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
                 token = base64.urlsafe_b64encode(tb + tag)
-                url = 'http://10.0.0.175:8001/#' + str(token, 'ascii')
+                url = QR_CODE_PATH + '#' + str(token, 'ascii')
 
                 print('url: %s' % (url))
 
@@ -229,8 +230,19 @@ def handle_png(websocket):
             for ws, t in list(active_controllers.items()):
                 if (now - t) > CONTROLLER_WEBSOCKET_TIMEOUT:
                     print('Timing out controller %s' % (str(ws.remote_address)))
-                    yield from ws.send('!timeout')
-                    del active_controllers[ws]
+                    try:
+                        yield from ws.send('!timeout')
+                        yield from ws.close() # this will cause del active_controllers[ws]
+                                              # and active_players -= 1
+                    except websockets.exceptions.InvalidState as e:
+                        # It is possible that the system that is timing out
+                        # has somehow died, and the send('!timeout') will never
+                        # complete (and instead bubble to an application level exception)
+                        # we must catch it, otherwise the cooperative multitasking
+                        # charade will fall apart when this task crashes
+                        # we should probably do this around all ws.send
+                        print('Controller %s seemed to have left on its own' % (str(ws.remote_address)))
+
 
         #time.sleep(0.025)
 
