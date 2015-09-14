@@ -43,7 +43,7 @@ class QR(object):
                 yield  # send board, sleep a bit...repeat
 
         # maintain this board for a bit
-        for x in range(90*30):
+        for x in range(50*30):
             yield
 
 
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     from board import Board
     import time
     board = Board(use_pygame=True)
-    qr = QR(board, 'http://wallhacks.xyz/#VfOkqH6z7Ant')
+    qr = QR(board, 'http://wallhacks.xyz/#VfcgOCskLOcq')
     for f in qr.frames():
         board.display()
         time.sleep(0.015)
