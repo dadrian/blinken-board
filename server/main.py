@@ -153,8 +153,8 @@ def handle_png(websocket):
     global in_menu
     global getscreen_websocks
 
-    #board = Board(use_pygame=False, host=('141.212.141.4', 1337))
-    board = Board(use_pygame=True)
+    board = Board(use_pygame=False, host=('141.212.141.4', 1337))
+    #board = Board(use_pygame=True)
     qr = None
     idle_frame = None
     print('pngpng')
