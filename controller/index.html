@@ -94,17 +94,25 @@ function get_button(pct_x, pct_y)
 
 var touches = [];
 
+function debug(msg) {
+    console.log('DEBUG: ' + msg);
+    //websocket.send('?' + msg);
+}
+
 var websocket;
 
 function button_released(button) {
-    console.log('off: ' + button.button);
+    //console.log('off: ' + button.button);
+    debug('off: ' + button.button);
     websocket.send('-' + button.button);
 }
 
 function button_pressed(button) {
-    console.log('on: ' + button.button);
+    //console.log('on: ' + button.button);
+    debug('on: ' + button.button);
     websocket.send('+' + button.button);
 }
+
 
 var display_error = false;
 
@@ -151,24 +159,45 @@ window.addEventListener('load', function(){
 
     //show_boundaries();
 
+    function get_closest_touch(x, y) {
+
+        min_idx = -1;
+        min_dist = 0;
+        for (var i=0; i<touches.length; i++) {
+            dist = (touches[i].x - x)*(touches[i].x - x) + (touches[i].y - y)*(touches[i].y - y);
+
+            if (dist < min_dist || min_idx == -1) {
+                min_idx = i;
+                min_dist = dist;
+            }
+        }
+
+        return min_idx;
+    }
+
     $('img').bind('contextmenu', function(e) {
         return false;
     });
 
     document.body.addEventListener('touchstart', function(e){
         var i;
+        debug('touchstart: ' + e.changedTouches.length + ' events');
         for (i=0; i<e.changedTouches.length; i++) {
             pct_x = (e.changedTouches[i].pageX / tot_w);
             pct_y = (e.changedTouches[i].pageY / tot_h);
-            console.log('[' + pct_x + ', ' + pct_y + ']');
+            debug('[' + pct_x + ', ' + pct_y + ']');
 
             idx = get_button(pct_x, pct_y);
+            debug('idx: ' + idx);
             if (idx >= 0) {
                 var button = buttons[idx];
                 //console.log('(' + pct_x + ', ' + pct_y + '): ' + button.button);
                 buttons[idx].pressed = true;
-                touches[i] = {button: button};
+                touches[touches.length] = {button_idx: idx, x: pct_x, y: pct_y, valid: true};
                 button_pressed(button);
+            } else {
+                // Follow the movement, but don't let it press any buttons it travels over
+                touches[touches.length] = {button_idx: -1, x: pct_x, y: pct_y, valid: false};
             }
         }
     }, false);
@@ -176,19 +205,36 @@ window.addEventListener('load', function(){
 
     function touchend (e){
         var i;
+        debug('touchend: ' + e.changedTouches.length + ' events');
         for (i=0; i<e.changedTouches.length; i++) {
             pct_x = (e.changedTouches[i].pageX / tot_w);
             pct_y = (e.changedTouches[i].pageY / tot_h);
 
+            touch_idx = get_closest_touch(pct_x, pct_y);
+
+            if (touches[touch_idx].button_idx >= 0) {
+                // Release button we are still on
+                var button = buttons[touches[touch_idx].button_idx];
+                button.pressed = false;
+                button_released(button);
+            }
+
+            // Delete this touch event
+            touches.splice(touch_idx, 1);
+
+            /*
             idx = get_button(pct_x, pct_y);
             if (idx >= 0) {
                 button = buttons[idx];
+
+
                 if (button.pressed) {
-                    delete touches[i];
+                    //delete touches[i];
                     buttons[idx].pressed = false;
                     button_released(button);
                 }
             }
+            */
         }
     }
 
@@ -198,30 +244,73 @@ window.addEventListener('load', function(){
 
     document.body.addEventListener('touchmove', function(e){
         var i;
+        // It doesn't make too much sense to track moves (who holds A and slides
+        // it to B without lifting?), but we do need to track the source button for
+        // when people slide off a button (otherwise, the touchend might not know
+        // the source). We don't have to issue button releases here, but
+        // probably should. Otherwise, you slide off a Right button, and
+        // hold it, so it still works. You release it, and press back in the same
+        // spot, but now Right won't trigger anymore. If we instead released the button
+        // when they slide off it, then there's some kind of feedback that lets the
+        // user know where the edge of the button is
+        debug('touchmove: ' + e.changedTouches.length + ' events');
         for (i=0; i<e.changedTouches.length; i++) {
             pct_x = (e.changedTouches[i].pageX / tot_w);
             pct_y = (e.changedTouches[i].pageY / tot_h);
 
-            idx = get_button(pct_x, pct_y);
-            if (idx >= 0) {
-                button = buttons[idx];
-                if (touches[i] == undefined) {
-                    touches[i] = {button: button};
-                    buttons[idx].pressed = true;
+            touch_idx = get_closest_touch(pct_x, pct_y);
+
+            button_idx = get_button(pct_x, pct_y);
+            debug('touch_idx='+touch_idx+', button_idx='+button_idx)
+
+            // update our x, y to this new position
+            touches[touch_idx].x = pct_x;
+            touches[touch_idx].y = pct_y;
+
+            if (touches[touch_idx].valid == false) {
+                // skip any button tracking things, this touch event
+                // is not eligible to press buttons
+                continue;
+            }
+            if (button_idx >= 0) {
+                button = buttons[button_idx];
+
+                if (touches[touch_idx].button_idx < 0) {
+                    // We have slid onto a new button (and were not immediately previously on one)
+                    // Should we allow this button to be pressed? Yes...
+
+                    debug('slid onto new button ('+button.button+')');
+                    buttons[button_idx].pressed = true;
                     button_pressed(button);
-                } else if (touches[i].button.button != button.button) {
-                    buttons[idx].pressed = true;
+
+                    touches[touch_idx].button_idx = button_idx;
+                    //touches[touch_idx].button = button;
+
+                } else if (touches[touch_idx].button_idx != button_idx) {
+                    // We have slid onto a new button (directly off an old one)
+                    var old_button = buttons[touches[touch_idx].button_idx];
+                    debug('changed ('+old_button.button+'->'+button.button+')');
+                    // Press new button
+                    buttons[button_idx].pressed = true;
                     button_pressed(button);
-                    button_released(touches[i].button);
-                    //delete touches[i];
-                    touches[i].button = button;
+
+                    // Release old
+                    old_button.pressed = false;
+                    button_released(old_button);
+
+                    // Update where we are
+                    touches[touch_idx].button_idx = button_idx;
+                    //touches[touch_idx].button = button;
                 }
-                // Still down...
-            } else if (touches[i] != undefined) {
-                button_released(touches[i].button);
-                delete touches[i];
-                // Hmmm. lost a button?
-                //console.log(e);
+                // else, we are still on the same button
+            } else if (touches[touch_idx].button_idx >= 0) {
+                var old_button = buttons[touches[touch_idx].button_idx];
+                debug('slid off button ('+old_button.button+')');
+                old_button.pressed = false;
+                button_released(old_button);
+                touches[touch_idx].button_idx = -1;
+                // We could just invalidate this event, and require them to tap again
+                // touches[touch_idx].valid = false; // ?
             }
         }
     }, false);
