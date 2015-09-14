@@ -319,7 +319,6 @@ def handle_controller(websocket):
     if token is None:
         return
 
-    websocket.remote_address = 'wrong library???'
 
     # validate token
     try:
