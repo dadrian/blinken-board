@@ -111,7 +111,7 @@ var display_error = false;
 window.addEventListener('load', function(){
     var tot_w = $(window).width();
     var tot_h = tot_w * 2411/5663;  // resolution of the image
-    websocket = new WebSocket('ws://wallhacks.xyz:8765/controller');
+    websocket = new WebSocket('ws://10.0.0.175:8765/controller');
     function status(m) { document.getElementById('socketStatus').innerHTML = m; }
     websocket.onopen  = function(e) {
                             status('CONNECTED');
