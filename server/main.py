@@ -13,7 +13,7 @@ import codecs
 TOKEN_HMAC_KEY = b'fogBI6ymJDbQCf6KVVr5x14r'
 TOKEN_HMAC_TAG_LEN = 5   # bytes
 MAX_TOKEN_AGE = 60*30    # seconds
-CONTROLLER_WEBSOCKET_TIMEOUT = 60*5 # seconds
+CONTROLLER_WEBSOCKET_TIMEOUT = 45 # seconds
 
 def path_to_list(path):
     base = posixpath.basename(path)
@@ -147,12 +147,13 @@ def write_img(board, img):
 @asyncio.coroutine
 def handle_png(websocket):
 
+    global active_controllers  # {ws: last_time_button_was_pressed}
     global active_players
     global in_menu
     global getscreen_websocks
 
-    board = Board(use_pygame=False, host=('141.212.141.4', 1337))
-    #board = Board(use_pygame=False)
+    #board = Board(use_pygame=False, host=('141.212.141.4', 1337))
+    board = Board(use_pygame=True)
     qr = None
     idle_frame = None
     print('pngpng')
@@ -181,13 +182,13 @@ def handle_png(websocket):
                 write_img(board, small_img)
         else:
             # Do QR code things, every so often
-            if time.gmtime().tm_sec == 0 and time.gmtime().tm_min % 5 == 0 and idle_frame is None:
+            if (time.gmtime().tm_sec == 0 or time.gmtime().tm_sec == 30) and time.gmtime().tm_min % 1 == 0 and idle_frame is None:
                 print('New QR code animation...')
 
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
                 tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
                 token = base64.urlsafe_b64encode(tb + tag)
-                url = 'http://wallhacks.xyz/#' + str(token, 'ascii')
+                url = 'http://10.0.0.175:8001/#' + str(token, 'ascii')
 
                 print('url: %s' % (url))
 
@@ -225,7 +226,7 @@ def handle_png(websocket):
             frames = 0
 
             # check for timed out users
-            for ws, t in active_controllers.items():
+            for ws, t in list(active_controllers.items()):
                 if (now - t) > CONTROLLER_WEBSOCKET_TIMEOUT:
                     print('Timing out controller %s' % (str(ws.remote_address)))
                     yield from ws.send('!timeout')
@@ -287,7 +288,7 @@ def handle_getscreen(websocket):
             print('Removing getscreen listener')
             break
 
-active_controlers = {}
+active_controllers = {}
 
 @server.route('/controller')
 @asyncio.coroutine
@@ -306,6 +307,8 @@ def handle_controller(websocket):
     if token is None:
         return
 
+    websocket.remote_address = 'wrong library???'
+
     # validate token
     try:
         token_raw = base64.urlsafe_b64decode(token)
@@ -322,8 +325,8 @@ def handle_controller(websocket):
             print('Incorrect tag %s (expected %s) for time %d' % (tag, expected_tag, t))
             yield from websocket.send('!bad_token')
             return
-    except:
-        print('Invalid token %s' % (token))
+    except Exception as e:
+        print('Invalid token %s: %s' % (token, str(e)))
         yield from websocket.send('!bad_token')
         return
 
