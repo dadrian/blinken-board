@@ -13,8 +13,8 @@ import codecs
 TOKEN_HMAC_KEY = b'fogBI6ymJDbQCf6KVVr5x14r'
 TOKEN_HMAC_TAG_LEN = 5   # bytes
 MAX_TOKEN_AGE = 60*30    # seconds
-CONTROLLER_WEBSOCKET_TIMEOUT = 15 # seconds
-QR_CODE_PATH = 'http://10.0.0.175:8001/'
+CONTROLLER_WEBSOCKET_TIMEOUT = 60*5 # seconds
+QR_CODE_PATH = 'http://wallhacks.xyz/'
 
 def path_to_list(path):
     base = posixpath.basename(path)
@@ -183,7 +183,7 @@ def handle_png(websocket):
                 write_img(board, small_img)
         else:
             # Do QR code things, every so often
-            if (time.gmtime().tm_sec == 0 or time.gmtime().tm_sec == 30) and time.gmtime().tm_min % 1 == 0 and idle_frame is None:
+            if (time.gmtime().tm_sec == 0) and time.gmtime().tm_min % 5 == 0 and idle_frame is None:
                 print('New QR code animation...')
 
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
