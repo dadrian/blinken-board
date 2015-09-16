@@ -9,12 +9,27 @@ import struct
 import base64
 import hmac
 import codecs
+import logger
+from board import Board
+from PIL import ImageFilter
+from PIL import Image
+import base64
+import io
+import time
+from menu import NesMenu
+from qr import QR
+
 
 TOKEN_HMAC_KEY = b'fogBI6ymJDbQCf6KVVr5x14r'
 TOKEN_HMAC_TAG_LEN = 5   # bytes
 MAX_TOKEN_AGE = 60*30    # seconds
 CONTROLLER_WEBSOCKET_TIMEOUT = 60*5 # seconds
 QR_CODE_PATH = 'http://wallhacks.xyz/'
+EVENT_LOG_FILE = 'event.log'
+
+
+logger.setLogLevel(logger.INFO)
+logger.setLogger(logger.FileLogger(open(EVENT_LOG_FILE, 'a')))
 
 def path_to_list(path):
     base = posixpath.basename(path)
@@ -36,7 +51,7 @@ class RoutePath(object):
         )
         self._variables = [part[1:] for part in self._parts if part[0] == ':']
         self._regex = re.compile(regex_str)
-        
+
     def matches(self, candidate_path):
         m = self._regex.fullmatch(candidate_path)
         if m:
@@ -46,7 +61,7 @@ class RoutePath(object):
                 context[name] = m.group(idx)
             return context
         return None
-    
+
     @classmethod
     def regex_for_part(cls, part):
         if len(part) == 0:
@@ -54,22 +69,22 @@ class RoutePath(object):
         if part[0] == ':':
             return '(.+)'
         return part
-                               
+
 
 class WebsocketRoute(object):
 
     def __init__(self, path):
         self._path = RoutePath(path)
-    
+
     def matches(self, candidate):
         return self._path.matches(candidate)
 
     def __call__(self, f):
-        print("inside of call")
-  
+        logger.trace("inside of call")
+
         @asyncio.coroutine
         def wrapped_f(websocket):
-            print('calling function for route {}'.format(self._path._raw_path))
+            logger.trace('calling function for route {}'.format(self._path._raw_path))
             yield from f(websocket)
         self._callback = wrapped_f
         return wrapped_f
@@ -83,7 +98,7 @@ class WebsocketServer(object):
     def route(self, path):
         route = WebsocketRoute(path)
         self._routes.append(route)
-        print('inside of route')
+        logger.trace('inside of route')
         return route
 
     def get_router(self):
@@ -91,12 +106,12 @@ class WebsocketServer(object):
         @asyncio.coroutine
         def do_routing(websocket, path):
             for handler in self._routes:
-                print("incoming url {}".format(path))
+                logger.trace("incoming url {}".format(path))
                 url_parts = urllib.parse.urlparse(path)
-                print("incoming path {}", url_parts.path)              
+                logger.trace("incoming path {}".format(url_parts.path))
                 if handler.matches(url_parts.path):
                     res = yield from handler._callback(websocket)
-                    print("success")
+                    logger.trace("success")
                     return res
             raise NotImplemented
         return do_routing
@@ -104,30 +119,11 @@ class WebsocketServer(object):
 
 server = WebsocketServer()
 
-
-@server.route('/testpath')
-@asyncio.coroutine
-def hello(websocket):
-    print('hello')
-    name = yield from websocket.recv()
-    print("< {}".format(name))
-    greeting = "Hello {}!".format(name)
-    yield from websocket.send(greeting)
-    print("> {}".format(greeting))
-
-from board import Board
-from PIL import ImageFilter
-from PIL import Image
-import base64
-import io
-import time
-from menu import NesMenu
-from qr import QR
-
 active_players = 0
 in_menu = True
 menu = NesMenu()
 getscreen_websocks = []
+
 
 def write_img(board, img):
     px = img.load()
@@ -157,7 +153,7 @@ def handle_png(websocket):
     #board = Board(use_pygame=True)
     qr = None
     idle_frame = None
-    print('pngpng')
+    logger.debug('in handle_png from %s' % (str(websocket.remote_address)))
     frames = 0
     tot_frames = 0
     last_time = time.time()
@@ -166,7 +162,7 @@ def handle_png(websocket):
         message = yield from websocket.recv()
         if message is None:
             # closed websocket
-            print("Closed png websock")
+            logger.warn("PNG websocket closed")
             break
 
         if active_players > 0:
@@ -184,14 +180,14 @@ def handle_png(websocket):
         else:
             # Do QR code things, every so often
             if (time.gmtime().tm_sec == 0) and time.gmtime().tm_min % 5 == 0 and idle_frame is None:
-                print('New QR code animation...')
+                logger.debug('New QR code animation...')
 
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
                 tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
                 token = base64.urlsafe_b64encode(tb + tag)
                 url = QR_CODE_PATH + '#' + str(token, 'ascii')
 
-                print('url: %s' % (url))
+                logger.debug('url: %s' % (url))
 
                 qr = QR(board, url)
                 idle_frame = qr.frames()
@@ -222,14 +218,14 @@ def handle_png(websocket):
         now = time.time()
         if (now - last_time) > 5:
             fps = float(frames) / (now - last_time)
-            print("%f FPS, %d total, %d byte frame, in_menu: %s, players: %d" % (fps, tot_frames, len(message), in_menu, active_players))
+            logger.debug("%f FPS, %d total, %d byte frame, in_menu: %s, players: %d" % (fps, tot_frames, len(message), in_menu, active_players))
             last_time = now
             frames = 0
 
             # check for timed out users
             for ws, t in list(active_controllers.items()):
                 if (now - t) > CONTROLLER_WEBSOCKET_TIMEOUT:
-                    print('Timing out controller %s' % (str(ws.remote_address)))
+                    logger.info('Timing out controller %s (%d players left)' % (str(ws.remote_address), active_players - 1))
                     try:
                         yield from ws.send('!timeout')
                         yield from ws.close() # this will cause del active_controllers[ws]
@@ -241,7 +237,7 @@ def handle_png(websocket):
                         # we must catch it, otherwise the cooperative multitasking
                         # charade will fall apart when this task crashes
                         # we should probably do this around all ws.send
-                        print('Controller %s seemed to have left on its own' % (str(ws.remote_address)))
+                        logger.warn('Controller %s seemed to have left on its own' % (str(ws.remote_address)))
 
 
         #time.sleep(0.025)
@@ -282,7 +278,7 @@ def handle_getcontrols(websocket):
         message = yield from websocket.recv()
         if message is None:
             controller_websocks.remove(websocket)
-            print('controller listener websocket closed')
+            logger.warn('controller listener websocket closed')
             break
 
 @server.route('/getscreen')
@@ -292,12 +288,12 @@ def handle_getscreen(websocket):
     # so they can see the glory of the board, too
     global getscreen_websocks
     getscreen_websocks.append(websocket)
-    print('Adding getscreen listener')
+    logger.info('Adding getscreen listener %s' % (str(websocket.remote_address)))
     while True:
         message = yield from websocket.recv()
         if message is None:
             getscreen_websocks.remove(websocket)
-            print('Removing getscreen listener')
+            logger.info('getscreen listener %s disconnected' % (str(websocket.remote_address)))
             break
 
 active_controllers = {}
@@ -328,21 +324,21 @@ def handle_controller(websocket):
         t, = struct.unpack('>L', ts)
 
         age = int(time.time()) - t
-        print('new controller %s with token %s (%d seconds old)' % (str(websocket.remote_address), token, age))
+        logger.info('New controller %s with token %s (%d seconds old)' % (str(websocket.remote_address), token, age))
 
         # validate tag
         expected_tag = hmac.new(TOKEN_HMAC_KEY, ts).digest()[0:TOKEN_HMAC_TAG_LEN]
         if not(hmac.compare_digest(tag, expected_tag)):
-            print('Incorrect tag %s (expected %s) for time %d' % (tag, expected_tag, t))
+            logger.warn('Incorrect tag %s (expected %s) for time %d' % (tag, expected_tag, t))
             yield from websocket.send('!bad_token')
             return
     except Exception as e:
-        print('Invalid token %s: %s' % (token, str(e)))
+        logger.warn('Invalid token %s: %s' % (token, str(e)))
         yield from websocket.send('!bad_token')
         return
 
     if (age > MAX_TOKEN_AGE):
-        print('token too old')
+        logger.warn('token too old')
         yield from websocket.send('!old_token')
         return
 
@@ -352,19 +348,22 @@ def handle_controller(websocket):
     if active_players == 1:
         in_menu = True
 
+    logger.info('%d active players' % (active_players))
+
     while True:
         message = yield from websocket.recv()
 
         # check for disconnected websocket
         if message is None:
             active_players -= 1
-            print('controller websocket %s closed' % (str(websocket.remote_address)))
+            logger.info('Controller websocket %s closed' % (str(websocket.remote_address)))
+            logger.info('%d active players' % (active_players))
             del active_controllers[websocket]
             break
 
         active_controllers[websocket] = time.time() # update time
 
-        print('controller: %s' % message)
+        logger.debug('controller: %s' % message)
 
         key = message[1:]
         if message[0] == '+':
@@ -376,6 +375,7 @@ def handle_controller(websocket):
         # if we're in a menu, interact with the menu
         if in_menu:
             if message == '+Start':
+                logger.info('Controller %s selects %s' % (str(websocket.remote_address), menu.current_game()))
                 # select game
                 for ws in controller_websocks:
                     yield from ws.send('>'+menu.current_game())
