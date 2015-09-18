@@ -230,7 +230,7 @@ def handle_png(websocket):
                         yield from ws.send('!timeout')
                         yield from ws.close() # this will cause del active_controllers[ws]
                                               # and active_players -= 1
-                    except websockets.exceptions.InvalidState as e:
+                    except (ConnectionResetError, websockets.exceptions.InvalidState) as e:
                         # It is possible that the system that is timing out
                         # has somehow died, and the send('!timeout') will never
                         # complete (and instead bubble to an application level exception)
