@@ -18,6 +18,7 @@ import io
 import time
 from menu import NesMenu
 from qr import QR
+import sun
 
 
 TOKEN_HMAC_KEY = b'fogBI6ymJDbQCf6KVVr5x14r'
@@ -138,8 +139,6 @@ def write_img(board, img):
             except:
                 pass
 
-
-
 @server.route('/png')
 @asyncio.coroutine
 def handle_png(websocket):
@@ -180,7 +179,7 @@ def handle_png(websocket):
         else:
             # Do QR code things, every so often
             hour = time.gmtime().tm_hour
-            if (time.gmtime().tm_sec == 0) and time.gmtime().tm_min % 5 == 0 and (hour >= 0 and hour <= 7) and idle_frame is None:
+            if (time.gmtime().tm_sec == 0) and time.gmtime().tm_min % 5 == 0 and not(sun.is_civil_twilight()) and idle_frame is None:
                 logger.debug('New QR code animation...')
 
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
