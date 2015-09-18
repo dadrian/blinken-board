@@ -179,7 +179,7 @@ def handle_png(websocket):
                 write_img(board, small_img)
         else:
             # Do QR code things, every so often
-            if (time.gmtime().tm_sec == 0) and time.gmtime().tm_min % 5 == 0 and idle_frame is None:
+            if (time.gmtime().tm_sec == 0) and time.gmtime().tm_min % 5 == 0 and (hour >= 0 and hour <= 7) and idle_frame is None:
                 logger.debug('New QR code animation...')
 
                 tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
