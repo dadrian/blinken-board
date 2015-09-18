@@ -6,7 +6,7 @@ except:
 import psu
 import socket
 import struct
-
+import logger
 
 
 class Board(object):
@@ -26,6 +26,7 @@ class Board(object):
         try:
             self.tcp_sock.connect(host)
         except socket.error:
+            self.tcp_sock = None
             pass
 
     def set_light(self, x, y, color):
@@ -48,8 +49,11 @@ class Board(object):
                 buf += struct.pack('>BBB', r, g, b)
         self.last_buf = buf
         try:
-            self.tcp_sock.send(buf)
+            if self.tcp_sock is not None:
+                self.tcp_sock.send(buf)
         except:
+            logger.warn("Lights TCP connection died")
+            self.tcp_sock = None
             # try reconnect?
             pass
 
