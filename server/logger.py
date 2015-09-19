@@ -50,7 +50,6 @@ class FileLogger(Logger):
         self.outfile.write(msg)
         self.outfile.flush()
 
-log_instance = None
 
 def setLogger(log_inst):
     global log_instance
@@ -87,9 +86,13 @@ def none(data):
     # Uh...what?
     pass 
 
-# default
-setLogger(FileLogger(sys.stdout))
-setLogLevel(INFO)
+try:
+    log_instance
+except NameError:
+    # default
+    setLogger(FileLogger(sys.stdout))
+    setLogLevel(INFO)
+
 
 if __name__ == "__main__":
     # Unit test/example usage:

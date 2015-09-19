@@ -7,10 +7,11 @@ import psu
 import socket
 import struct
 import logger
+import time
 
 
 class Board(object):
-    def __init__(self, size=(600,490), host=('127.0.0.1', 1337), width=57, height=44, use_pygame=True):
+    def __init__(self, size=(600,490), host=('127.0.0.1', 1337), width=57, height=44, use_pygame=True, reconnect_interval=30):
         self.screen = None
         if use_pygame:
             self.screen = pygame.display.set_mode(size)
@@ -22,11 +23,34 @@ class Board(object):
                 self.lights[x].append((0, 0, 0))
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
         self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        self.tcp_sock.settimeout(5)
         self.last_buf = b''
+        self.host = host
+        self.last_reconnect = time.time()
+        self.reconnect_interval = reconnect_interval
         try:
             self.tcp_sock.connect(host)
+            logger.debug('Connected to %s' % (str(host)))
+        except socket.error:
+            logger.warn('Could not connect to %s' % (str(host)))
+            self.tcp_sock = None
+            pass
+
+    def reconnect_tcp(self):
+        now = time.time()
+        if (now - self.last_reconnect) < self.reconnect_interval:
+            return
+        self.last_reconnect = now
+
+        logger.debug('reconnecting to %s' % (str(self.host)))
+        self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        self.tcp_sock.settimeout(5)
+        try:
+            self.tcp_sock.connect(self.host)
+            logger.info('Reconnected to lights %s' % (str(self.host)))
         except socket.error:
             self.tcp_sock = None
+            logger.debug('Failed to reconnect to %s' % (str(self.host)))
             pass
 
     def set_light(self, x, y, color):
@@ -51,9 +75,12 @@ class Board(object):
         try:
             if self.tcp_sock is not None:
                 self.tcp_sock.send(buf)
-        except:
-            logger.warn("Lights TCP connection died")
+            else:
+                self.reconnect_tcp()
+        except Exception as e:
+            logger.warn("Lights TCP connection died: %s" % (str(e)))
             self.tcp_sock = None
+            self.reconnect_tcp()
             # try reconnect?
             pass
 
