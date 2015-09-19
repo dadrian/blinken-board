@@ -157,6 +157,7 @@ def handle_png(websocket):
     tot_frames = 0
     last_time = time.time()
     printed_msg = 0
+    last_civil = True
     while True:
         message = yield from websocket.recv()
         if message is None:
@@ -179,18 +180,28 @@ def handle_png(websocket):
         else:
             # Do QR code things, every so often
             hour = time.gmtime().tm_hour
-            if (time.gmtime().tm_sec == 0) and time.gmtime().tm_min % 5 == 0 and not(sun.is_civil_twilight()) and idle_frame is None:
-                logger.debug('New QR code animation...')
+            if (time.gmtime().tm_sec == 0) and time.gmtime().tm_min % 5 == 0 and idle_frame is None:
+                if sun.is_civil_twilight():
+                    # keep lights off
+                    if last_civil is False:
+                        logger.info('Ending QR display (start of civil twilight)')
+                    last_civil = True
+                else:
+                    if last_civil is True:
+                        logger.info('Starting QR display (end of civil twilight')
+                    last_civil = False
+                    logger.debug('New QR code animation...')
 
-                tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
-                tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
-                token = base64.urlsafe_b64encode(tb + tag)
-                url = QR_CODE_PATH + '#' + str(token, 'ascii')
+                    tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
+                    tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
+                    token = base64.urlsafe_b64encode(tb + tag)
+                    url = QR_CODE_PATH + '#' + str(token, 'ascii')
 
-                logger.debug('url: %s' % (url))
+                    logger.debug('url: %s' % (url))
 
-                qr = QR(board, url)
-                idle_frame = qr.frames()
+                    qr = QR(board, url)
+                    idle_frame = qr.frames()
+
             if idle_frame is not None:
                 try:
                     idle_frame.__next__()
