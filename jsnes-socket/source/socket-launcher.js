@@ -3,14 +3,29 @@ var wsUri = 'ws://localhost:8765/png';
 var KeyMap = {A: [88], B: [90], Select: [17], Start: [13], Up: [38], Down: [40], Left: [37], Right: [39],
             UpLeft: [38, 37], UpRight: [38, 39], DownLeft: [40, 37], DownRight: [39, 40]};
 
+
+
+
 window.addEventListener("load", function() {
 
     // kindle a websocket
-    var websocket = new WebSocket(wsUri);
+    var websocket;
     function status(m) { document.getElementById('socketStatus').innerHTML = m; }
-    websocket.onopen  = function(e) { status('CONNECTED'); };
-    websocket.onclose = function(e) { status('DISCONNECTED'); };
-    websocket.onerror = function(e) { status('ERROR: '+e.data); };
+
+    function png_onopen(e) { status('CONNECTED'); }
+    function png_onclose(e) { status('DISONNECTED'); setTimeout(connect_png_ws, 5000); }
+    function png_onerror(e) { status('ERROR: '+e.data); setTimeout(connect_png_ws, 5000); }
+
+
+    function connect_png_ws() {
+        websocket = new WebSocket(wsUri);
+        websocket.onopen  = png_onopen;
+        websocket.onclose = png_onclose;
+        websocket.onerror = png_onerror;
+    }
+
+    connect_png_ws();
+
 
     var controller_ws = new WebSocket('ws://localhost:8765/getcontrols');
     controller_ws.onopen  = function(evt) { console.log('controller sock opened'); };
