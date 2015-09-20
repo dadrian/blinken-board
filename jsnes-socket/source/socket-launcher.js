@@ -1,10 +1,9 @@
 var wsUri = 'ws://localhost:8765/png';
 
 var KeyMap = {A: [88], B: [90], Select: [17], Start: [13], Up: [38], Down: [40], Left: [37], Right: [39],
-            UpLeft: [38, 37], UpRight: [38, 39], DownLeft: [40, 37], DownRight: [39, 40]};
-
-
-
+            UpLeft: [38, 37], UpRight: [38, 39], DownLeft: [40, 37], DownRight: [39, 40],
+            A2: [103], B2: [105], Select2: [99], Start2: [97], Up2: [104], Down2: [98], Left2: [100], Right2: [102],
+            UpLeft2: [104, 100], UpRight2: [104, 102], DownLeft2: [98, 100], DownRight2: [98, 102]};
 
 window.addEventListener("load", function() {
 

@@ -25,6 +25,28 @@ body, html {
     color: #fff;
 }
 
+#PlayerSelect {
+    position: absolute;
+    border: 2px solid #000;
+    display: block;
+    width: 8%;
+    height: 6%;
+    right: 5%;
+    top: 3%;
+    text-align: center;
+    padding-top: 1%;
+    font-size: 12pt;
+    background-color: #028;
+    opacity: 0.7;
+    color: #fff;
+}
+
+
+#PlayerSelect a {
+    width: 100%;
+    text-decoration: none;
+}
+
 #socketStatus {
     display: none;
 }
@@ -58,6 +80,8 @@ var buttons = [
 {start: [0.17, 0.60], end: [0.30, 0.89], button: 'DownRight', pressed: false},
 
 ];
+
+var player = 1;
 
 function show_boundaries()
 {
@@ -103,20 +127,46 @@ var websocket;
 
 function button_released(button) {
     //console.log('off: ' + button.button);
-    debug('off: ' + button.button);
-    websocket.send('-' + button.button);
+    var b = button.button;
+    if (player == 2) {
+        b += '2';
+    }
+    debug('off: ' + b);
+    websocket.send('-' + b);
 }
 
 function button_pressed(button) {
     //console.log('on: ' + button.button);
-    debug('on: ' + button.button);
-    websocket.send('+' + button.button);
+    var b = button.button;
+    if (player == 2) {
+        b += '2';
+    }
+    debug('on: ' + b);
+    websocket.send('+' + b);
 }
 
 
 var display_error = false;
 
+function player_toggle() {
+    console.log('toggle');
+    var e = document.getElementById('PlayerSelect');
+    if (player == 1) {
+        player = 2;
+        e.innerHTML = 'P2';
+        e.style.backgroundColor = '#082';
+    } else {
+        player = 1;
+        e.innerHTML = 'P1';
+        e.style.backgroundColor = '#028'
+    }
+
+    return false;
+}
+
 window.addEventListener('load', function(){
+    document.getElementById('PlayerSelect').addEventListener("click", player_toggle);
+
     var tot_w = $(window).width();
     var tot_h = tot_w * 2411/5663;  // resolution of the image
     websocket = new WebSocket('ws://wallhacks.xyz:8765/controller');
@@ -326,6 +376,7 @@ window.addEventListener('load', function(){
 <img id="img" src="nes-controller.jpg" width="100%"/>
 
 <div id="socketStatus"></div>
+<div id="PlayerSelect">P1</div>
 
 </body>
 </html>
