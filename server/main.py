@@ -160,6 +160,14 @@ def handle_public_png(websocket):
 
         board.send_board()
 
+@asyncio.coroutine
+def send_to_getscreens(board):
+    for ws in getscreen_websocks:
+        try:
+            yield from ws.send(board.get_last_buf())
+        except:
+            getscreen_websocks.remove(ws)
+
 @server.route('/raw_board')
 @asyncio.coroutine
 def handle_board(websocket):
@@ -178,13 +186,7 @@ def handle_board(websocket):
 
         if active_players == 0:
             board.send_buf_tcp(message)
-            for ws in getscreen_websocks:
-                try:
-                    yield from ws.send(board.get_last_buf())
-                except:
-                    getscreen_websocks.remove(ws)
-
-
+            yield from send_to_getscreens(board)
 
 @server.route('/png')
 @asyncio.coroutine
