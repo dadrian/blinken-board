@@ -92,7 +92,6 @@ class Board(object):
 
     def send_board_ws(self):
         buf = self.serialize_board()
-        logger.info('buf len: %d' % (len(buf)))
         if len(buf) == 0:
             return
         #self.ws.send(buf)
