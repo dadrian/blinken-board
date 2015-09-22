@@ -13,7 +13,7 @@ from board import Board
 
 TOKEN_HMAC_KEY = b'fogBI6ymJDbQCf6KVVr5x14r'
 TOKEN_HMAC_TAG_LEN = 5   # bytes
-QR_CODE_PATH = 'http://127.0.0.1:8001/index.html'
+QR_CODE_PATH = 'http://wallhacks.xyz/'
 
 def main():
     board = Board(use_pygame=False, create_ws=True)
