@@ -103,7 +103,7 @@ class GameOfLife(object):
 
 
     def frames(self):
-        fade_out_frames = 30*3
+        fade_out_frames = 20*3
         for i in range(self.num_frames):
             pct_fade_out = 0
             if i > (self.num_frames - fade_out_frames):
@@ -124,12 +124,12 @@ if __name__ == '__main__':
     import time
     from qr import QR
     #lights = Board(host=('141.212.141.4', 1337))
-    lights = Board(create_ws=True)
+    lights = Board(create_ws=False)
 
     qr = QR(lights, 'http://wallhacks.xyz/#VfcgOCkL0cq')
     life = GameOfLife(lights, qr.matrix)
 
     for f in life.frames():
-        lights.send_board_ws()
+        #lights.send_board_ws()
         lights.display()
         time.sleep(0.05)
