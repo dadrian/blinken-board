@@ -18,7 +18,8 @@ class GameOfLife(object):
     # lights is the board.Board() object
     # initial_matrix should be a 2d array (please ensure width/height is big enough
     # anim is number of frames to animate (-1 for no animation)
-    def __init__(self, lights=None, initial_matrix=None, width=WIDTH, height=HEIGHT, anim=-1):
+    def __init__(self, lights=None, initial_matrix=None, width=WIDTH, height=HEIGHT, anim=-1, num_frames=30*30):
+        self.num_frames = num_frames
         self.b = {}
         self.lights = lights
         self.width = width
@@ -35,32 +36,35 @@ class GameOfLife(object):
         for x in range(self.width):
             for y in range(self.height):
                 self.b[x,y] = 0
-                b_x = x - x_offset
-                b_y = y - y_offset
+                b_x = int(x - x_offset)
+                b_y = int(y - y_offset)
                 if (b_x > 0 and b_x < len(matrix)) and (b_y >0 and b_y < len(matrix[0])):
                     if matrix[b_x][b_y]:
                         self.b[x,y] = 1
 
 
 
-    def write_board(self):
+    def write_board(self, pct_fade_out=0):
         for x in range(self.width):
             for y in range(self.height):
-                color = (0, 0, 0)
+                n = 0
                 if self.b[x,y]:
-                    color = (255, 255, 255)
+                    n = int(255*(1-pct_fade_out))
+                color = (n, n, n)
                 self.lights.set_light(x, y, color)
 
-    def write_board_diff(new_b, pct):
+    def write_board_diff(new_b, pct_anim, pct_fade_out=0):
         for x in range(self.width):
             for y in range(self.height):
                 n = 0
                 if self.b[x,y]:
                     n = 255
                     if new_b[x,y]==0:
-                        n = (255 - int(pct*255))
+                        n = (255 - int(pct_anim*255))
                 if not(self.b[x,y]) and new_b[x,y]:
-                    n = int(pct*255)
+                    n = int(pct_anim*255)
+                n *= (1-pct_fade_out)
+                n = int(n)
                 color = (n, n, n)
                 self.lights.set_light(x, y, color)
 
@@ -99,26 +103,33 @@ class GameOfLife(object):
 
 
     def frames(self):
-        while True:
-            self.write_board()
+        fade_out_frames = 30*3
+        for i in range(self.num_frames):
+            pct_fade_out = 0
+            if i > (self.num_frames - fade_out_frames):
+                pct_fade_out = (fade_out_frames - (self.num_frames - i - 1))/float(fade_out_frames)
+            self.write_board(pct_fade_out)
             new_b = self.do_generation()
             yield
 
             for i in range(self.anim+1):
-                self.write_board_diff(new_b, float(i)/self.anim)
+                self.write_board_diff(new_b, float(i)/self.anim, pct_fade_out)
                 yield
 
+            del self.b
             self.b = new_b
+
 
 if __name__ == '__main__':
     import time
     from qr import QR
     #lights = Board(host=('141.212.141.4', 1337))
-    lights = Board()
+    lights = Board(create_ws=True)
 
     qr = QR(lights, 'http://wallhacks.xyz/#VfcgOCkL0cq')
     life = GameOfLife(lights, qr.matrix)
 
     for f in life.frames():
-        lights.send_board()
+        lights.send_board_ws()
+        lights.display()
         time.sleep(0.05)
