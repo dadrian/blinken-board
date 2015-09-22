@@ -15,8 +15,13 @@ class QRtoGOL(object):
     def frames(self):
         yield from self.qr.frames()
         # intermediate? better transition?
-        yield from self.game.frames()
-
+        first = True
+        for f in self.game.frames():
+            if first:
+                for i in range(20*3):
+                    yield f
+                first = False
+            yield f
 
 if __name__ == '__main__':
     import time
@@ -25,5 +30,5 @@ if __name__ == '__main__':
 
     for f in q.frames():
         board.display()
-        time.sleep(1/30.0)
+        time.sleep(1/20.0)
 
