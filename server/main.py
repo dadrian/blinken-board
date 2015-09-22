@@ -27,6 +27,7 @@ MAX_TOKEN_AGE = 60*30    # seconds
 CONTROLLER_WEBSOCKET_TIMEOUT = 60*5 # seconds
 QR_CODE_PATH = 'http://wallhacks.xyz/'
 EVENT_LOG_FILE = 'event.log'
+LIGHTS_HOST = ('141.212.141.4',1337)
 
 
 logger.setLogLevel(logger.INFO)
@@ -139,6 +140,52 @@ def write_img(board, img):
             except:
                 pass
 
+@server.route('/public_png')
+@asyncio.coroutine
+def handle_public_png(websocket):
+    board = Board(use_pygame=True, host=LIGHTS_HOST)
+
+    logger.info('public PNG connected: %s' % (str(websocket.remote_address)))
+    while True:
+        message = yield from websocket.recv()
+        if message is None:
+            # closed websocket
+            logger.info("public PNG websocket closed")
+            return
+
+        #img_data = base64.b64decode(message.split(',')[1])
+        img = Image.open(io.BytesIO(message))
+        small_img = img.resize((57, 45), Image.ANTIALIAS)
+        write_img(board, small_img)
+
+        board.send_board()
+
+@server.route('/raw_board')
+@asyncio.coroutine
+def handle_board(websocket):
+    global active_players
+    global getscreen_websocks
+
+    board = Board(use_pygame=False, host=LIGHTS_HOST)
+
+    logger.debug('raw board ws connected: %s' % (str(websocket.remote_address)))
+    while True:
+        message = yield from websocket.recv()
+        if message is None:
+            logger.debug('raw board ws closed')
+            return
+        message = base64.b64decode(message)
+
+        if active_players == 0:
+            board.send_buf_tcp(message)
+            for ws in getscreen_websocks:
+                try:
+                    yield from ws.send(board.get_last_buf())
+                except:
+                    getscreen_websocks.remove(ws)
+
+
+
 @server.route('/png')
 @asyncio.coroutine
 def handle_png(websocket):
@@ -148,8 +195,7 @@ def handle_png(websocket):
     global in_menu
     global getscreen_websocks
 
-    board = Board(use_pygame=False, host=('141.212.141.4', 1337))
-    #board = Board(use_pygame=True)
+    board = Board(use_pygame=False, host=LIGHTS_HOST)
     qr = None
     idle_frame = None
     logger.debug('in handle_png from %s' % (str(websocket.remote_address)))
@@ -158,6 +204,7 @@ def handle_png(websocket):
     last_time = time.time()
     printed_msg = 0
     last_civil = True
+    last_frame_time = 0
     while True:
         message = yield from websocket.recv()
         if message is None:
@@ -177,46 +224,8 @@ def handle_png(websocket):
                 # read image from menu
                 small_img = menu.get_image()
                 write_img(board, small_img)
-        else:
-            # Do QR code things, every so often
-            hour = time.gmtime().tm_hour
-            if (time.gmtime().tm_sec == 0) and time.gmtime().tm_min % 5 == 0 and idle_frame is None:
-                if sun.is_civil_twilight():
-                    # keep lights off
-                    if last_civil is False:
-                        logger.info('Ending QR display (start of civil twilight)')
-                    last_civil = True
-                else:
-                    if last_civil is True:
-                        logger.info('Starting QR display (end of civil twilight')
-                    last_civil = False
-                    logger.debug('New QR code animation...')
 
-                    tb = struct.pack('>L', int(time.time()))            # get time as 4-byte array
-                    tag = hmac.new(TOKEN_HMAC_KEY, tb).digest()[0:TOKEN_HMAC_TAG_LEN]    # truncated hmac with secret
-                    token = base64.urlsafe_b64encode(tb + tag)
-                    url = QR_CODE_PATH + '#' + str(token, 'ascii')
-
-                    logger.debug('url: %s' % (url))
-
-                    qr = QR(board, url)
-                    idle_frame = qr.frames()
-
-            if idle_frame is not None:
-                try:
-                    idle_frame.__next__()
-                    board.send_board()
-                    for ws in getscreen_websocks:
-                        try:
-                            yield from ws.send(board.get_last_buf())
-                        except:
-                            getscreen_websocks.remove(ws)
-                except StopIteration:
-                    idle_frame = None
-
-
-        #board.display()
-        if active_players > 0:
+            # send board
             board.send_board()
             for ws in getscreen_websocks:
                 try:
