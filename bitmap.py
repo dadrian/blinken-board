@@ -16,32 +16,66 @@ im = Image.open(sys.argv[1])
 
 
 pygame.init()
-board = Board()
+board = Board(host=('141.212.141.4', 1337))
 
 
+WIDTH = 57
+HEIGHT = 44
 
-degree = 0
+ratio = float(im.size[0]) / im.size[1]
+print(im.size)
+print('ratio: %f' % (ratio))
+
+resize_w = WIDTH
+resize_h = HEIGHT
+left_offset = 0
+top_offset = 0
+
+if (ratio * HEIGHT) < WIDTH:
+    print('vertically limitted')
+    resize_w = int(HEIGHT * ratio)
+    resize_h = HEIGHT
+    left_offset = (WIDTH - resize_w) / 2
+else:
+    print('horizontal limitted')
+    resize_w = WIDTH
+    resize_h = int(WIDTH /  ratio)
+    top_offset = (HEIGHT - resize_h) / 2
+
+print('resizing to (%d, %d) top: %d, left: %d' % (resize_w, resize_h, top_offset, left_offset))
+
+#degree = 0
 while True:
 
 
-
-
-
-    px = im.resize((57, 45), Image.ANTIALIAS).filter(ImageFilter.Kernel((3,3), (0, -1, 0, -1, 5, -1, 0, -1, 0))).load()
-    if (degree % 90 == 0):
-        degree += 0.1
-    px = im.rotate(degree).load()
-    degree += 15
-    for x in xrange(57):
-        for y in xrange(45):
+    px = im.resize((resize_w, resize_h), Image.ANTIALIAS).load() #filter(ImageFilter.Kernel((3,3), (0, -1, 0, -1, 5, -1, 0, -1, 0))).load()
+    #if (degree % 90 == 0):
+    #    degree += 0.1
+    #px = im.rotate(degree).load()
+    #degree += 15
+    for x in xrange(WIDTH):
+        for y in xrange(HEIGHT):
             try:
-                r, g, b, a = px[x,y]
-                #print r, g, b
-                board.set_light(x, y, (r, g, b))
+
+                im_x = x - left_offset
+                im_y = y - top_offset
+                if im_x < resize_w and im_y < resize_h:
+                    r = px[im_x, im_y][0]
+                    g = px[im_x, im_y][1]
+                    b = px[im_x, im_y][2]
+                    if len(px[im_x, im_y]) > 3:
+                        a = px[im_x, im_y][3]
+                        r *= (a/255.0)
+                        g *= (a/255.0)
+                        b *= (a/255.0)
+                else:
+                    r, g, b = (0, 0, 0)
+
+                board.set_light(x, y, (int(r), int(g), int(b)))
             except:
                 pass
 
-    board.display()
+    #board.display()
     board.send_board()
 
     for event in pygame.event.get():
