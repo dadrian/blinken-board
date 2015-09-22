@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import time
 import numpy as np
@@ -13,11 +13,11 @@ from board import Board
 import pygame
 
 pygame.init()
-board = Board(host=('141.212.141.4',1337))
-#board = Board()
+#board = Board(host=('141.212.141.4',1337))
+board = Board()
 
-for x in xrange(57):
-    for y in xrange(44):
+for x in range(57):
+    for y in range(44):
         board.set_light(x, y, (255, 255, 0))
 
 board.display()
@@ -35,8 +35,8 @@ while(cap.isOpened()):
 
     scale = cv2.resize(frame, (57, 45))
 
-    for x in xrange(57):
-        for y in xrange(44):
+    for x in range(57):
+        for y in range(44):
             try:
                 b, g, r = scale[y][x]
                 board.set_light(x, y, (r, g, b))
