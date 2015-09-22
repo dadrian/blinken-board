@@ -8,10 +8,12 @@ import socket
 import struct
 import logger
 import time
+from websocket import create_connection
+import base64
 
 
 class Board(object):
-    def __init__(self, size=(600,490), host=('127.0.0.1', 1337), width=57, height=44, use_pygame=True, reconnect_interval=30):
+    def __init__(self, size=(600,490), host=('127.0.0.1', 1337), width=57, height=44, use_pygame=True, reconnect_interval=30, create_ws=False):
         self.screen = None
         if use_pygame:
             self.screen = pygame.display.set_mode(size)
@@ -35,6 +37,16 @@ class Board(object):
             logger.warn('Could not connect to %s' % (str(host)))
             self.tcp_sock = None
             pass
+
+        try:
+            if create_ws:
+                self.ws = create_connection('ws://localhost:8765/raw_board')
+                logger.trace('created websocket for board')
+        except:
+            logger.warn('failed to create websocket')
+            pass
+
+
 
     def reconnect_tcp(self):
         now = time.time()
@@ -65,12 +77,28 @@ class Board(object):
     def get_last_buf(self):
         return self.last_buf
 
-    def send_board(self):
+    def serialize_board(self):
         buf = b''
         for x in range(len(self.lights)):
             for y in range(len(self.lights[x])):
                 r, g, b = self.lights[x][y]
                 buf += struct.pack('>BBB', r, g, b)
+        return buf
+
+    def send_board(self):
+        buf = self.serialize_board()
+        self.send_buf_tcp(buf)
+        self.display()
+
+    def send_board_ws(self):
+        buf = self.serialize_board()
+        logger.info('buf len: %d' % (len(buf)))
+        if len(buf) == 0:
+            return
+        #self.ws.send(buf)
+        self.ws.send(base64.b64encode(buf))
+
+    def send_buf_tcp(self, buf):
         self.last_buf = buf
         try:
             if self.tcp_sock is not None:
@@ -84,7 +112,6 @@ class Board(object):
             # try reconnect?
             pass
 
-        self.display()
 
     def send_board_udp(self):
         for x in range(len(self.lights)):
