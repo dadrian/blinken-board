@@ -38,15 +38,16 @@ def main():
 
                 logger.debug('url: %s' % (url))
 
-                qr = QRtoGOL(board, url, qr_wait_frames=30*50)
+                qr = QRtoGOL(board, url, qr_wait_frames=20*50)
 
                 for f in qr.frames():
                     board.send_board_ws()
                     time.sleep(1/20.0)
+                logger.debug('End of QR/GOL')
         time.sleep(0.5)
 
 
 
 if __name__=='__main__':
-    logger.setLogLevel(logger.TRACE)
+    logger.setLogLevel(logger.INFO)
     main()

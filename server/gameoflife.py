@@ -18,7 +18,7 @@ class GameOfLife(object):
     # lights is the board.Board() object
     # initial_matrix should be a 2d array (please ensure width/height is big enough
     # anim is number of frames to animate (-1 for no animation)
-    def __init__(self, lights=None, initial_matrix=None, width=WIDTH, height=HEIGHT, anim=-1, num_frames=30*30):
+    def __init__(self, lights=None, initial_matrix=None, width=WIDTH, height=HEIGHT, anim=-1, num_frames=20*45):
         self.num_frames = num_frames
         self.b = {}
         self.lights = lights
