@@ -15,10 +15,10 @@ const WIDTH : usize = 57;
 const HEIGHT : usize = 44;
 
 fn print_board(board :&[[bool; HEIGHT]]) {
-    for x in 0..WIDTH {
-        for y in 0..HEIGHT {
+    for y in 0..HEIGHT {
+        for x in 0..WIDTH {
             if board[x][y] {
-                print!(".");
+                print!("X");
             } else {
                 print!(" ");
             }
@@ -52,7 +52,6 @@ fn main() {
         for y in 0..HEIGHT {
             let idx = (x*HEIGHT) + y;
             let px = bin_board[(idx / 8)] & (1 << (idx % 8));
-            println!("{},{} = {}", x, y, px);
             board[x][y] = (px != 0);
         }
     }
