@@ -1,4 +1,4 @@
-
+#![crate_type = "dylib"]
 //use serialize::base64::{self, ToBase64};
 
 
@@ -14,6 +14,7 @@ use std::env;
 const WIDTH : usize = 57;
 const HEIGHT : usize = 44;
 
+#[allow(dead_code)]
 fn print_board(board :&[[bool; HEIGHT]]) {
     for y in 0..HEIGHT {
         for x in 0..WIDTH {
@@ -96,16 +97,8 @@ fn board_equal(b1 :&[[bool; HEIGHT]], b2 :&[[bool; HEIGHT]]) -> bool {
     return true;
 }
 
-fn main() {
-
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        println!("Please provide initial board state");
-        std::process::exit(0);
-    }
-
-    let initial_board = &args[1];    // Can't "take" args[1], it is owned
+#[no_mangle]
+pub extern fn how_many_generations(initial_board :&str, max_generations: u32) -> u32 {
 
     let bin_board = initial_board.from_base64().unwrap();
     //assert_eq!(initial_board_res.is_ok(), true);
@@ -113,33 +106,35 @@ fn main() {
 
     let mut board = [[false; HEIGHT]; WIDTH];
 
-    println!("Initial board: {}", initial_board);
-    println!("Bin boad: {:?} {}", bin_board, bin_board.len());
+    //println!("Initial board: {}", initial_board);
+    //println!("Bin boad: {:?} {}", bin_board, bin_board.len());
 
     for x in 0..WIDTH {
         for y in 0..HEIGHT {
             let idx = (x*HEIGHT) + y;
             let px = bin_board[(idx / 8)] & (1 << (idx % 8));
-            board[x][y] = (px != 0);
+            board[x][y] = px != 0;
         }
     }
-    print_board(&board);
+    //print_board(&board);
 
     let mut t1 = [[false; HEIGHT]; WIDTH];
     let mut two_ago = [[false; HEIGHT]; WIDTH];
 
-    for generation in 0..100000 {
+    for generation in 0..max_generations {
         do_generation(&mut board);
 
         // Compare this to two iterations ago
         if board_equal(&board, &two_ago) {
+            /*
             print_board(&board);
             println!("----");
             print_board(&t1);
             println!("----");
             print_board(&two_ago);
             println!("Stuck in loop after {} generations", generation);
-            std::process::exit(1);
+            */
+            return generation;
         }
 
         copy_board(&t1, &mut two_ago);
@@ -147,6 +142,22 @@ fn main() {
 
     }
 
-    print_board(&board);
+    max_generations
+}
 
+fn main() {
+
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 3 {
+        println!("Please provide number of generations and initial board state");
+        std::process::exit(0);
+    }
+
+    let max_generations = args[1].parse::<u32>().unwrap();
+    let initial_board = &args[2];    // Can't "take" args[1], it is owned
+
+    let generations = how_many_generations(initial_board, max_generations);
+
+    println!("{}", generations);
 }
