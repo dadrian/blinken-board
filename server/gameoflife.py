@@ -3,6 +3,7 @@
 
 from board import Board
 import random
+import struct
 
 
 
@@ -42,6 +43,22 @@ class GameOfLife(object):
                     if matrix[b_x][b_y]:
                         self.b[x,y] = 1
 
+
+    def serialize(self):
+        buf = ''
+        d = 0
+        idx = 0 # when it gets to 8, serialize the next byte
+        for x in range(self.width):
+            for y in range(self.height):
+                d |= self.b[x,y] * (1 << idx)
+                idx += 1
+                if idx == 8:
+                    buf += struct.pack('<B', d)
+                    d = 0
+                    idx = 0
+        if idx != 0:
+            buf += struct.pack('<B', d)
+        return buf.encode('base64').replace('\n', '')
 
 
     def write_board(self, pct_fade_out=0):
@@ -101,6 +118,32 @@ class GameOfLife(object):
 
         return new_b
 
+    def is_board_equal(self, b1, b2):
+        for x in range(self.width):
+            for y in range(self.height):
+                if b1[x,y] != b2[x,y]:
+                    return False
+        return True
+
+
+    # Don't call, can only really run like 2 or 3x realtime.
+    # farm out to a C process is probably best (or make this a cython thing???)
+    def how_many_generations(self, max_generation=1000):
+        prev_b = None
+        for i in range(max_generation):
+            new_b = self.do_generation()
+
+            # compare new_b and prev_b
+            if prev_b is not None and self.is_board_equal(new_b, prev_b):
+                return i
+
+            del prev_b
+            prev_b = self.b
+            self.b = new_b
+            if (i%10)==0:
+                print("siulated %d generations" % (i))
+
+        return max_generation
 
     def frames(self):
         fade_out_frames = 20*3
@@ -123,10 +166,21 @@ class GameOfLife(object):
 if __name__ == '__main__':
     import time
     from qr import QR
+    import sys
     #lights = Board(host=('141.212.141.4', 1337))
     lights = Board(create_ws=False)
 
-    qr = QR(lights, 'http://wallhacks.xyz/#VfcgOCkL0cq')
+    qr = QR(lights, 'http://Wallhacks.xyz/#VfcgOCkL0ci')
+    simul = GameOfLife(lights, qr.matrix)
+    simul.write_board(0)
+    lights.display()
+
+    #time.sleep(10000)
+
+    print("board: %s" % simul.serialize())
+    print("Will run for %d generations" % simul.how_many_generations(100000))
+    #sys.exit(0)
+
     life = GameOfLife(lights, qr.matrix)
 
     for f in life.frames():
