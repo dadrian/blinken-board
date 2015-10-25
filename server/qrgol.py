@@ -10,7 +10,7 @@ class QRtoGOL(object):
         self.qr = QR(board, url)
         if qr_wait_frames is not None:
             self.qr.wait_frames = qr_wait_frames
-        self.game = GameOfLife(board, self.qr.matrix)
+        self.game = GameOfLife(board, self.qr.matrix, num_frames=20*60*2)
 
     def frames(self):
         yield from self.qr.frames()
@@ -57,7 +57,6 @@ def get_long_qr_to_gol(board, url, fiddle_offsets, min_generations=1000, qr_wait
     return QRtoGOL(board, max_url, qr_wait_frames=qr_wait_frames)
 
 
-
 if __name__ == '__main__':
     import time
     import sys
@@ -68,8 +67,7 @@ if __name__ == '__main__':
     #for url in permutations('http://wallhacks.xyz/#Vf4aaeja8', range(7,9)):
     #    print(url)
 
-    q = get_long_qr_to_gol(board, 'http://wallhacks.xyz/#Vfm587fe9', range(7,16), min_generations=60*3*20, qr_wait_frames=20*5)
-    sys.exit(0)
+    q = get_long_qr_to_gol(board, 'http://wallhacks.xyz/#Vfm587fe9', range(7,16), min_generations=60*2*20, qr_wait_frames=20*5)
 
     for f in q.frames():
         board.display()
