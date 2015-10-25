@@ -27,6 +27,10 @@ class QR(object):
         self.indexes = [ (x, y) for x in range(len(self.matrix)) for y in range(len(self.matrix[0])) if self.matrix[x][y] ]
         random.shuffle(self.indexes)
 
+        # dummy board (maybe they just want the matrix)
+        if board is None:
+            return
+
         # initialize board
         for x in range(57):
             for y in range(44):

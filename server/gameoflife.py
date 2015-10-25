@@ -4,6 +4,8 @@
 from board import Board
 import random
 import struct
+import subprocess
+import binascii
 
 
 
@@ -45,7 +47,7 @@ class GameOfLife(object):
 
 
     def serialize(self):
-        buf = ''
+        buf = b''
         d = 0
         idx = 0 # when it gets to 8, serialize the next byte
         for x in range(self.width):
@@ -58,7 +60,7 @@ class GameOfLife(object):
                     idx = 0
         if idx != 0:
             buf += struct.pack('<B', d)
-        return buf.encode('base64').replace('\n', '')
+        return binascii.b2a_base64(buf).replace(b'\n', b'')
 
 
     def write_board(self, pct_fade_out=0):
@@ -128,7 +130,7 @@ class GameOfLife(object):
 
     # Don't call, can only really run like 2 or 3x realtime.
     # farm out to a C process is probably best (or make this a cython thing???)
-    def how_many_generations(self, max_generation=1000):
+    def how_many_generations_slow(self, max_generation=1000):
         prev_b = None
         for i in range(max_generation):
             new_b = self.do_generation()
@@ -144,6 +146,10 @@ class GameOfLife(object):
                 print("siulated %d generations" % (i))
 
         return max_generation
+
+    def how_many_generations(self, max_generation=1000):
+        res = subprocess.check_output(["./gameoflife/target/release/gameoflife", str(max_generation), self.serialize()])
+        return int(res)
 
     def frames(self):
         fade_out_frames = 20*3
