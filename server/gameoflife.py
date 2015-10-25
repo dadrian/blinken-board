@@ -6,6 +6,9 @@ import random
 import struct
 import subprocess
 import binascii
+import ctypes
+
+libgameoflife = ctypes.CDLL("libgameoflife.so")
 
 
 
@@ -148,7 +151,10 @@ class GameOfLife(object):
         return max_generation
 
     def how_many_generations(self, max_generation=1000):
-        res = subprocess.check_output(["./gameoflife/target/release/gameoflife", str(max_generation), self.serialize()])
+
+        # Yes, we are calling a rust function from python.
+        res = libgameoflife.how_many_generations(self.serialize(), max_generation)
+        #res = subprocess.check_output(["./gameoflife/target/release/gameoflife", str(max_generation), self.serialize()])
         return int(res)
 
     def frames(self):
