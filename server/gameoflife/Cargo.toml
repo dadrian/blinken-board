@@ -4,5 +4,11 @@ name = "gameoflife"
 version = "0.1.0"
 authors = ["Eric Wustrow <ewust@umich.edu>"]
 
+[lib]
+name = "gameoflife"
+path = "src/main.rs"
+crate-type = ["dylib"]
+
 [dependencies]
 rustc-serialize = "0.3"
+libc = "0.1"

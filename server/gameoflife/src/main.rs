@@ -1,12 +1,13 @@
 #![crate_type = "dylib"]
-//use serialize::base64::{self, ToBase64};
-
 
 
 extern crate rustc_serialize;
-//use rustc_serialize::base64;
-use rustc_serialize::base64::FromBase64;
+extern crate libc;
 
+use rustc_serialize::base64::FromBase64;
+use std::ffi::CString;
+use std::ffi::CStr;
+use std::str;
 use std::env;
 
 
@@ -97,9 +98,15 @@ fn board_equal(b1 :&[[bool; HEIGHT]], b2 :&[[bool; HEIGHT]]) -> bool {
     return true;
 }
 
-#[no_mangle]
-pub extern fn how_many_generations(initial_board :&str, max_generations: u32) -> u32 {
 
+#[no_mangle]
+pub extern fn how_many_generations(initial_board_cstr :*const libc::c_char, max_generations: u32) -> u32 {
+
+    let initial_board :&str;
+    unsafe {
+        initial_board = str::from_utf8(CStr::from_ptr(initial_board_cstr).to_bytes()).unwrap();
+        //to_string_lossy().into_owned();
+    }
     let bin_board = initial_board.from_base64().unwrap();
     //assert_eq!(initial_board_res.is_ok(), true);
     //let bin_board = initial_board_res.ok();
@@ -157,7 +164,9 @@ fn main() {
     let max_generations = args[1].parse::<u32>().unwrap();
     let initial_board = &args[2];    // Can't "take" args[1], it is owned
 
-    let generations = how_many_generations(initial_board, max_generations);
+    let initial_board_cstr = CString::new(initial_board.to_string()).unwrap();
+
+    let generations = how_many_generations(initial_board_cstr.as_ptr(), max_generations);
 
     println!("{}", generations);
 }
