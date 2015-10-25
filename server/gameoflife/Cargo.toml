@@ -1,0 +1,8 @@
+
+[package]
+name = "gameoflife"
+version = "0.1.0"
+authors = ["Eric Wustrow <ewust@umich.edu>"]
+
+[dependencies]
+rustc-serialize = "0.3"
