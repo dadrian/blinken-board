@@ -8,7 +8,10 @@ import socket
 import struct
 import logger
 import time
-from websocket import create_connection
+try:
+    from websocket import create_connection
+except:
+    pass
 import base64
 
 
