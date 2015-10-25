@@ -6,6 +6,7 @@ import time
 import logger
 from qr import QR
 from qrgol import QRtoGOL
+from qrgol import get_long_qr_to_gol
 import hmac
 import base64
 from board import Board
