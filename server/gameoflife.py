@@ -182,7 +182,7 @@ if __name__ == '__main__':
     #lights = Board(host=('141.212.141.4', 1337))
     lights = Board(create_ws=False)
 
-    qr = QR(lights, 'http://Wallhacks.xyz/#VfcgOCkL0ci')
+    qr = QR(lights, 'http://waLLhacKS.xyz/#VjAGoHCYG4St')
     simul = GameOfLife(lights, qr.matrix)
     simul.write_board(0)
     lights.display()
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     #time.sleep(10000)
 
     print("board: %s" % simul.serialize())
-    print("Will run for %d generations" % simul.how_many_generations(100000))
+    print("Will run for %d generations" % simul.how_many_generations(3600))
     #sys.exit(0)
 
     life = GameOfLife(lights, qr.matrix)

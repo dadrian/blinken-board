@@ -10,7 +10,7 @@ class QRtoGOL(object):
         self.qr = QR(board, url)
         if qr_wait_frames is not None:
             self.qr.wait_frames = qr_wait_frames
-        self.game = GameOfLife(board, self.qr.matrix, num_frames=20*60*2)
+        self.game = GameOfLife(board, self.qr.matrix, num_frames=20*60*1)
 
     def frames(self):
         yield from self.qr.frames()
