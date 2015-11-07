@@ -40,7 +40,7 @@ def main():
                 logger.debug('url: %s' % (url))
 
                 #qr = QRtoGOL(board, url, qr_wait_frames=20*50)
-                qr =  get_long_qr_to_gol(board, url, range(7,16), min_generations=60*3*20, qr_wait_frames=20*50)
+                qr =  get_long_qr_to_gol(board, url, range(7,16), min_generations=60*20, qr_wait_frames=20*40)
 
                 for f in qr.frames():
                     board.send_board_ws()
